@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Compilar e Executar Basic Statements",
+      "type": "shell",
+      "command": "ghc -o basic-statements basic-statements.hs && ./basic-statements",
+      "group": "build",
+      "isBackground": false,
+      "problemMatcher": ["$haskell"]
+    }
+  ]
+}
