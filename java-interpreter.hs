@@ -1,4 +1,5 @@
-type Ambiente = [(Id,ValorFun)]
+type Id = String
+type Numero = Double
 
 data Termo = Var Id
            | Lit Numero
@@ -24,6 +25,7 @@ data Valor = Num Double
            | Fun (Valor -> Estado -> (Valor,Estado))
            | Erro
 
+type Ambiente = [(Id,ValorFun)]
 type Estado = [(Id,Valor)]
 
 int :: Ambiente -> Termo -> Estado -> (Valor, Estado)
