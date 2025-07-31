@@ -25,7 +25,7 @@ data Valor = Num Double
            | Fun (Valor -> Estado -> (Valor,Estado))
            | Erro
 
-type Ambiente = [(Id,ValorFun)]
+type Ambiente = [(Id,Valor)]
 type Estado = [(Id,Valor)]
 
 int :: Ambiente -> Termo -> Estado -> (Valor, Estado)
