@@ -22,6 +22,7 @@ data Termo = Var Id
            | NewC Id                   -- Instanciação (new)
            | Acc Termo Id              -- Acesso a campo (obj.campo)
            | Set Termo Id Termo        -- Atribuição a campo (obj.campo = valor)
+           | Null
 
 -- Valor: resultados da avaliação
 data Valor = Num Double
