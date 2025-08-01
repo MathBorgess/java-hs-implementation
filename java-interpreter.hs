@@ -5,6 +5,7 @@ type Numero = Double
 data Termo = Var Id
            | Lit Numero
            | Som Termo Termo
+           | Mul Termo Termo
            | Lam Id Termo
            | Apl Termo Termo
            | Atr Id Termo
@@ -44,6 +45,10 @@ int _ _ Skip e = (Unit, e)
 int c a (Var x) e = (search x (a ++ e), e)
 
 int c a (Som t u) e = (somaVal v1 v2, e2)
+  where (v1, e1) = int c a t e
+        (v2, e2) = int c a u e1
+
+int c a (Mul t u) e = (multiplica v1 v2, e2)
   where (v1, e1) = int c a t e
         (v2, e2) = int c a u e1
 
@@ -143,6 +148,11 @@ search i ((j, v) : l) = if i == j then v else search i l
 somaVal :: Valor -> Valor -> Valor
 somaVal (Num x) (Num y) = Num (x + y)
 somaVal _ _ = Erro
+
+multiplica :: Valor -> Valor -> Valor
+multiplica (Num x) (Num y) = Num (x * y)
+multiplica _ _ = Erro
+
 
 app :: Valor -> Valor -> Estado -> (Valor, Estado)
 app (Fun f) v e = f v e
