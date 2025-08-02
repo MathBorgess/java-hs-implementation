@@ -41,48 +41,48 @@ type Heap = [(Id, (Id, Estado))]     -- (objID, (nomeClasse, atributosDaInstanci
 evaluate :: Heap -> Ambiente -> Termo -> Estado -> (Valor, Estado, Heap)
 
 -- Literais e Skip
-evaluate h _ (Lit n) e = (Num n, e, h)
-evaluate h _ (Bol b) e = (Bol b, e, h)
-evaluate h _ Skip e    = (Unit, e, h)
+evaluate heap _ (Lit n) e = (Num n, e, heap)
+evaluate heap _ (Bol b) e = (Bol b, e, heap)
+evaluate heap _ Skip e    = (Unit, e, heap)
 
 -- Variáveis
-evaluate h a (Var x) e = (search x (a ++ e), e, h)
+evaluate heap amb (Var x) e = (search x (amb ++ e), e, heap)
 
 -- Soma
-evaluate h a (Som t u) e =
-    let (v1, e1, h1) = evaluate h a t e
-        (v2, e2, h2) = evaluate h1 a u e1
+evaluate heap amb (Som t u) e =
+    let (v1, e1, h1) = evaluate heap amb t e
+        (v2, e2, h2) = evaluate h1 amb u e1
     in (somaVal v1 v2, e2, h2)
 
 -- Multiplicação
-evaluate h a (Mul t u) e =
-    let (v1, e1, h1) = evaluate h a t e
-        (v2, e2, h2) = evaluate h1 a u e1
+evaluate heap amb (Mul t u) e =
+    let (v1, e1, h1) = evaluate heap amb t e
+        (v2, e2, h2) = evaluate h1 amb u e1
     in (multiplica v1 v2, e2, h2)
 
 -- Lambda
-evaluate h a (Lam x t) e = (Fun (\v st -> let (res, st2, _) = evaluate h ((x,v):a) t st in (res, st2)), e, h)
+evaluate heap amb (Lam x t) e = (Fun (\v st -> let (res, st2, _) = evaluate heap ((x,v):amb) t st in (res, st2)), e, heap)
 
 -- Aplicação
-evaluate h a (Apl t u) e =
-    let (v1, e1, h1) = evaluate h a t e
-        (v2, e2, h2) = evaluate h1 a u e1
+evaluate heap amb (Apl t u) e =
+    let (v1, e1, h1) = evaluate heap amb t e
+        (v2, e2, h2) = evaluate h1 amb u e1
     in app v1 v2 e2 h2
 
 -- Atribuição
-evaluate h a (Atr x t) e =
-    let (v1, e1, h1) = evaluate h a t e
+evaluate heap amb (Atr x t) e =
+    let (v1, e1, h1) = evaluate heap amb t e
     in (v1, wr (x, v1) e1, h1)
 
 -- Sequência
-evaluate h a (Seq t u) e =
-    let (_, e1, h1) = evaluate h a t e
-    in evaluate h1 a u e1
+evaluate heap amb (Seq t u) e =
+    let (_, e1, h1) = evaluate heap amb t e
+    in evaluate h1 amb u e1
 
 -- Igualdade
-evaluate h a (Ig t u) e =
-    let (v1, e1, h1) = evaluate h a t e
-        (v2, e2, h2) = evaluate h1 a u e1
+evaluate heap amb (Ig t u) e =
+    let (v1, e1, h1) = evaluate heap amb t e
+        (v2, e2, h2) = evaluate h1 amb u e1
     in case (v1, v2) of
         (Num x, Num y) -> (Bol (x == y), e2, h2)
         (Bol x, Bol y) -> (Bol (x == y), e2, h2)
@@ -90,64 +90,64 @@ evaluate h a (Ig t u) e =
         _              -> (Erro, e2, h2)
 
 -- Menor
-evaluate h a (Menor t u) e =
-    let (v1, e1, h1) = evaluate h a t e
-        (v2, e2, h2) = evaluate h1 a u e1
+evaluate heap amb (Menor t u) e =
+    let (v1, e1, h1) = evaluate heap amb t e
+        (v2, e2, h2) = evaluate h1 amb u e1
     in case (v1, v2) of
         (Num x, Num y) -> (Bol (x < y), e2, h2)
         _              -> (Erro, e2, h2)
 
 -- AND
-evaluate h a (And t u) e =
-    let (v1, e1, h1) = evaluate h a t e
+evaluate heap amb (And t u) e =
+    let (v1, e1, h1) = evaluate heap amb t e
     in case v1 of
         Bol False -> (Bol False, e1, h1)
         Bol True ->
-            let (v2, e2, h2) = evaluate h1 a u e1
+            let (v2, e2, h2) = evaluate h1 amb u e1
             in case v2 of
                 Bol b -> (Bol b, e2, h2)
                 _     -> (Erro, e2, h2)
         _ -> (Erro, e1, h1)
 
 -- NOT
-evaluate h a (Not t) e =
-    let (v, e1, h1) = evaluate h a t e
+evaluate heap amb (Not t) e =
+    let (v, e1, h1) = evaluate heap amb t e
     in case v of
         Bol b -> (Bol (not b), e1, h1)
         _     -> (Erro, e1, h1)
 
 -- IF
-evaluate h a (Iff cond t1 t2) e =
-    let (v, e1, h1) = evaluate h a cond e
+evaluate heap amb (Iff cond t1 t2) e =
+    let (v, e1, h1) = evaluate heap amb cond e
     in case v of
-        Bol True  -> evaluate h1 a t1 e1
-        Bol False -> evaluate h1 a t2 e1
+        Bol True  -> evaluate h1 amb t1 e1
+        Bol False -> evaluate h1 amb t2 e1
         _         -> (Erro, e1, h1)
 
 -- WHILE
-evaluate h a (Whi cond body) e =
-    let (v, e1, h1) = evaluate h a cond e
+evaluate heap amb (Whi cond body) e =
+    let (v, e1, h1) = evaluate heap amb cond e
     in case v of
         Bol True ->
-            let (_, e2, h2) = evaluate h1 a body e1
-            in evaluate h2 a (Whi cond body) e2
+            let (_, e2, h2) = evaluate h1 amb body e1
+            in evaluate h2 amb (Whi cond body) e2
         Bol False -> (Unit, e1, h1)
         _         -> (Erro, e1, h1)
 
 -- Definição de classe
-evaluate h a (Class nome attrs mets) e =
-    (Unit, e, h)  -- só adiciona ao ambiente
-  where _a1 = (nome, ClaDef attrs mets) : a
+evaluate heap amb (Class nome attrs mets) e =
+    (Unit, e, heap)  -- só adiciona ao ambiente
+  where _a1 = (nome, ClaDef attrs mets) : amb
 
 -- Instanciação de classe
-evaluate h a (New nomeClasse) e =
-    case search nomeClasse a of
+evaluate heap amb (New nomeClasse) e =
+    case search nomeClasse amb of
         ClaDef attrs _ ->
-            let objID = show (length h + 1)
+            let objID = show (length heap + 1)
                 instAttrs = inicializaAtributos attrs
-                novaHeap = (objID, (nomeClasse, instAttrs)) : h
+                novaHeap = (objID, (nomeClasse, instAttrs)) : heap
             in (Num (read objID), e, novaHeap)
-        _ -> (Erro, e, h)
+        _ -> (Erro, e, heap)
 
 -- Funções auxiliares
 search :: Id -> [(Id, Valor)] -> Valor
