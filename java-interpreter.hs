@@ -14,16 +14,19 @@ data Termo
     | Apl Termo Termo
     | Atr Id Termo
     | Seq Termo Termo
-    | Skip                      -- Comando vazio
-    | Bol Bool                  -- Literal booleano
-    | Ig Termo Termo            -- Igualdade (==)
-    | Menor Termo Termo         -- Comparação (<)
-    | And Termo Termo           -- Operador AND (&&)
-    | Not Termo                 -- Operador NOT (!)
-    | Iff Termo Termo Termo     -- If-Else
-    | Whi Termo Termo           -- While
-    | Class Id [Id] [Termo]     -- nome, atributos, métodos
-    | New Id                    -- instanciar classe
+    | Skip                          -- Comando vazio
+    | Bol Bool                      -- Literal booleano
+    | Ig Termo Termo                -- Igualdade (==)
+    | Menor Termo Termo             -- Comparação (<)
+    | And Termo Termo               -- Operador AND (&&)
+    | Not Termo                     -- Operador NOT (!)
+    | Iff Termo Termo Termo         -- If-Else
+    | While Termo Termo               -- While
+    | Class Id [Id] [Termo]         -- nome, atributos, métodos
+    | New Id                        -- instanciar classe
+    | Interface Id [Id] [Termo]     -- nome, atributos, métodos
+    | ClassAbstrata Id [Id] [Termo] -- nome, atributos, métodos
+    | For Termo Termo Termo Termo     -- For loop completo (init, cond, increment, body)
     -- deriving Show
 
 type Programa = [Definicao]
@@ -38,6 +41,10 @@ data Valor
     | Erro
     | Null
     | ClaDef [Id] [Termo]               -- Definição de classe
+    -- Interface
+    | IntDef [Id] [Termo]               -- Definição de interface
+    -- Classe Abstrata
+    | ClaAbstrataDef [Id] [Termo]       -- Definição de classe abstrata
     -- deriving Eq
 
 type Estado = [(Id, Valor)]          -- Estado mutável
@@ -53,12 +60,16 @@ testPrograma a [Def i t] estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
                 Class _ attrs mets -> (i, ClaDef attrs mets) : a
+                Interface _ attrs mets -> (i, IntDef attrs mets) : a
+                ClassAbstrata _ attrs mets -> (i, ClaAbstrataDef attrs mets) : a
                 _                  ->  a
         in ((v, estado1, heap1), a1)
 testPrograma a (Def i t : ds) estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
                 Class _ attrs mets -> (i, ClaDef attrs mets) : a
+                Interface _ attrs mets -> (i, IntDef attrs mets) : a
+                ClassAbstrata _ attrs mets -> (i, ClaAbstrataDef attrs mets) : a
                 _                  ->  a
     in testPrograma a1 ds estado1 heap1
 
@@ -69,12 +80,16 @@ intPrograma a [Def i t] estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
                 Class _ attrs mets -> (i, ClaDef attrs mets) : a
+                Interface _ attrs mets -> (i, IntDef attrs mets) : a
+                ClassAbstrata _ attrs mets -> (i, ClaAbstrataDef attrs mets) : a
                 _                  -> a
     in (v, estado1, heap1)
 intPrograma a (Def i t : ds) estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
                 Class _ attrs mets -> (i, ClaDef attrs mets) : a
+                Interface _ attrs mets -> (i, IntDef attrs mets) : a
+                ClassAbstrata _ attrs mets -> (i, ClaAbstrataDef attrs mets) : a
                 _                  -> a
     in intPrograma a1 ds estado1 heap1
 
@@ -166,12 +181,12 @@ evaluate heap amb (Iff cond t1 t2) e =
         _         -> (Erro, e1, h1)
 
 -- WHILE
-evaluate heap amb (Whi cond body) e =
+evaluate heap amb (While cond body) e =
     let (v, e1, h1) = evaluate heap amb cond e
     in case v of
         BoolVal True ->
             let (_, e2, h2) = evaluate h1 amb body e1
-            in evaluate h2 amb (Whi cond body) e2
+            in evaluate h2 amb (While cond body) e2
         BoolVal False -> (Unit, e1, h1)
         _         -> (Erro, e1, h1)
 
@@ -188,8 +203,27 @@ evaluate heap ambiente (New nomeClasse) estado =
                 instanciaAtr = [(x, Null) | x <- attrs]
                 novaHeap = (objID, (nomeClasse, instanciaAtr)) : heap
             in (Num (read objID), estado, novaHeap)
+        -- Erro de instanciação de classe abstrata
+        IntDef _ _ -> 
+            (Erro, estado, heap)  -- Não é possível instanciar uma interface
+        ClaAbstrataDef _ _ ->
+            (Erro, estado, heap)  -- Não é possível instanciar uma classe abstrata
+        -- Outros casos
         _ -> (Erro, estado, heap)
 
+
+-- Interface 
+evaluate heap ambiente (Interface nome attrs _) estado =
+    (Unit, estado, heap)  -- Ambiente será atualizado por intPrograma
+
+-- Classe Abstrata
+evaluate heap ambiente (ClassAbstrata nome attrs _) estado =
+    (Unit, estado, heap)  -- Ambiente será atualizado por intPrograma
+
+-- For - FOR loop completo com incremento
+evaluate heap ambiente (For init cond increment body) estado =
+    let (_, estado1, heap1) = evaluate heap ambiente init estado
+    in forLoop heap1 ambiente cond increment body estado1
 
 -- Funções auxiliares
 search :: Id -> [(Id, Valor)] -> Valor
@@ -216,6 +250,19 @@ wr (i, v) ((j, u) : l) =
     if i == j
         then (j, v) : l
         else (j, u) : wr (i, v) l
+
+-- For - implementa o loop FOR correto
+forLoop :: Heap -> Ambiente -> Termo -> Termo -> Termo -> Estado -> (Valor, Estado, Heap)
+forLoop heap amb cond increment body estado =
+    let (v_cond, e1, h1) = evaluate heap amb cond estado
+    in case v_cond of
+        BoolVal True ->
+            let (_, e2, h2) = evaluate h1 amb body e1           -- Executa corpo
+                (_, e3, h3) = evaluate h2 amb increment e2      -- Executa incremento
+            in forLoop h3 amb cond increment body e3            -- Recursão
+        BoolVal False -> (Unit, e1, h1)                         -- Condição falsa, sai
+        _ -> (Erro, e1, h1)                                     -- Erro: condição não booleana
+
 
 -- Executar um termo
 at :: Termo -> (Valor, Estado, Heap)
