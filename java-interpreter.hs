@@ -1,6 +1,7 @@
 type Id = String
 type Numero = Double
 
+
 -- Termo: representação das expressões e comandos
 data Termo
     = Var Id
@@ -19,8 +20,12 @@ data Termo
     | Not Termo                 -- Operador NOT (!)
     | Iff Termo Termo Termo     -- If-Else
     | Whi Termo Termo           -- While
-    | Class Id [Id] [Id]        -- Classe: nome, atributos, métodos (simplificado)
-    | New Id                    -- Cria instância da classe
+    | Class Id [Id] [Termo]     -- nome, atributos, métodos
+    | New Id                    -- instanciar classe
+    -- deriving Show
+
+type Programa = [Definicao]
+data Definicao = Def Id Termo
 
 -- Valor: resultados da avaliação
 data Valor
@@ -30,12 +35,26 @@ data Valor
     | Unit
     | Erro
     | Null
-    | ClaDef [Id] [Id]               -- Definição de classe
-    | Obj Estado                     -- Objeto (não usado no retorno final)
+    | ClaDef [Id] [Termo]               -- Definição de classe
+    -- deriving Eq
 
-type Ambiente = [(Id, Valor)]        -- Variáveis e definições
 type Estado = [(Id, Valor)]          -- Estado mutável
+type Ambiente = [(Id, Valor)]        -- Variáveis e definições
 type Heap = [(Id, (Id, Estado))]     -- (objID, (nomeClasse, atributosDaInstancia))
+
+
+-- Executa um programa
+
+intPrograma :: Ambiente -> Programa -> Estado -> Heap -> (Valor, Estado, Heap)
+
+intPrograma a [] estado heap = (Erro, estado, heap)
+intPrograma a [Def i t] estado heap = int heap a t estado
+intPrograma a (Def i t : ds) estado heap =
+    let (v, estado1, heap1) = evaluate heap a t estado
+        a1 = case t of
+                Class _ attrs mets -> (i, ClaDef attrs mets) : a
+                _                  -> (i, v) : a
+    in intPrograma a1 ds estado1 heap1
 
 -- Função principal de interpretação
 evaluate :: Heap -> Ambiente -> Termo -> Estado -> (Valor, Estado, Heap)
@@ -135,19 +154,20 @@ evaluate heap amb (Whi cond body) e =
         _         -> (Erro, e1, h1)
 
 -- Definição de classe
-evaluate heap amb (Class nome attrs mets) e =
-    (Unit, e, heap)  -- só adiciona ao ambiente
-  where _a1 = (nome, ClaDef attrs mets) : amb
+evaluate heap ambiente (Class nome attrs _) estado =
+    (Unit, estado, heap)  -- Ambiente será atualizado por intPrograma
+
 
 -- Instanciação de classe
-evaluate heap amb (New nomeClasse) e =
-    case search nomeClasse amb of
+evaluate heap ambiente (New nomeClasse) estado =
+    case search nomeClasse ambiente of
         ClaDef attrs _ ->
             let objID = show (length heap + 1)
-                instAttrs = inicializaAtributos attrs
-                novaHeap = (objID, (nomeClasse, instAttrs)) : heap
-            in (Num (read objID), e, novaHeap)
-        _ -> (Erro, e, heap)
+                instanciaAtr = [(x, Null) | x <- attrs]
+                novaHeap = (objID, (nomeClasse, instanciaAtr)) : heap
+            in (Num (read objID), estado, novaHeap)
+        _ -> (Erro, estado, heap)
+
 
 -- Funções auxiliares
 search :: Id -> [(Id, Valor)] -> Valor
@@ -175,22 +195,17 @@ wr (i, v) ((j, u) : l) =
         then (j, v) : l
         else (j, u) : wr (i, v) l
 
-inicializaAtributos :: [Id] -> Estado
-inicializaAtributos [] = []
-inicializaAtributos (x:xs) = (x, Null) : inicializaAtributos xs
-
 -- Executar um termo
 at :: Termo -> (Valor, Estado, Heap)
 at t = evaluate [] [] t []
 
 -- Show
 instance Show Valor where
-    show (Num x) = show x
+    show (Num x) =  show x
     show (Bol True) = "true"
     show (Bol False) = "false"
     show (Fun _) = "Funcao"
     show Unit = "()"
-    show (ClaDef a m) = "Classe(" ++ show a ++ ")"
-    show (Obj campos) = "Objeto" ++ show campos
     show Erro = "Erro"
     show Null = "Null"
+    show (ClaDef attrs _) = "<classe com atributos: " ++ show attrs ++ ">"
