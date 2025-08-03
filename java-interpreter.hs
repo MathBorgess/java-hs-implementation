@@ -1,3 +1,5 @@
+module JavaInterpreter where
+
 type Id = String
 type Numero = Double
 
@@ -30,7 +32,7 @@ data Definicao = Def Id Termo
 -- Valor: resultados da avaliação
 data Valor
     = Num Double
-    | Bol Bool
+    | BoolVal Bool
     | Fun (Valor -> Estado -> (Valor, Estado))
     | Unit
     | Erro
@@ -61,7 +63,7 @@ evaluate :: Heap -> Ambiente -> Termo -> Estado -> (Valor, Estado, Heap)
 
 -- Literais e Skip
 evaluate heap _ (Lit n) e = (Num n, e, heap)
-evaluate heap _ (Bol b) e = (Bol b, e, heap)
+evaluate heap _ (Bol b) e = (BoolVal b, e, heap)
 evaluate heap _ Skip e    = (Unit, e, heap)
 
 -- Variáveis
@@ -103,9 +105,9 @@ evaluate heap amb (Ig t u) e =
     let (v1, e1, h1) = evaluate heap amb t e
         (v2, e2, h2) = evaluate h1 amb u e1
     in case (v1, v2) of
-        (Num x, Num y) -> (Bol (x == y), e2, h2)
-        (Bol x, Bol y) -> (Bol (x == y), e2, h2)
-        (Unit, Unit)   -> (Bol True, e2, h2)
+        (Num x, Num y) -> (BoolVal (x == y), e2, h2)
+        (BoolVal x, BoolVal y) -> (BoolVal (x == y), e2, h2)
+        (Unit, Unit)   -> (BoolVal True, e2, h2)
         _              -> (Erro, e2, h2)
 
 -- Menor
@@ -113,18 +115,18 @@ evaluate heap amb (Menor t u) e =
     let (v1, e1, h1) = evaluate heap amb t e
         (v2, e2, h2) = evaluate h1 amb u e1
     in case (v1, v2) of
-        (Num x, Num y) -> (Bol (x < y), e2, h2)
+        (Num x, Num y) -> (BoolVal (x < y), e2, h2)
         _              -> (Erro, e2, h2)
 
 -- AND
 evaluate heap amb (And t u) e =
     let (v1, e1, h1) = evaluate heap amb t e
     in case v1 of
-        Bol False -> (Bol False, e1, h1)
-        Bol True ->
+        BoolVal False -> (BoolVal False, e1, h1)
+        BoolVal True ->
             let (v2, e2, h2) = evaluate h1 amb u e1
             in case v2 of
-                Bol b -> (Bol b, e2, h2)
+                BoolVal b -> (BoolVal b, e2, h2)
                 _     -> (Erro, e2, h2)
         _ -> (Erro, e1, h1)
 
@@ -132,25 +134,25 @@ evaluate heap amb (And t u) e =
 evaluate heap amb (Not t) e =
     let (v, e1, h1) = evaluate heap amb t e
     in case v of
-        Bol b -> (Bol (not b), e1, h1)
+        BoolVal b -> (BoolVal (not b), e1, h1)
         _     -> (Erro, e1, h1)
 
 -- IF
 evaluate heap amb (Iff cond t1 t2) e =
     let (v, e1, h1) = evaluate heap amb cond e
     in case v of
-        Bol True  -> evaluate h1 amb t1 e1
-        Bol False -> evaluate h1 amb t2 e1
+        BoolVal True  -> evaluate h1 amb t1 e1
+        BoolVal False -> evaluate h1 amb t2 e1
         _         -> (Erro, e1, h1)
 
 -- WHILE
 evaluate heap amb (Whi cond body) e =
     let (v, e1, h1) = evaluate heap amb cond e
     in case v of
-        Bol True ->
+        BoolVal True ->
             let (_, e2, h2) = evaluate h1 amb body e1
             in evaluate h2 amb (Whi cond body) e2
-        Bol False -> (Unit, e1, h1)
+        BoolVal False -> (Unit, e1, h1)
         _         -> (Erro, e1, h1)
 
 -- Definição de classe
@@ -202,8 +204,8 @@ at t = evaluate [] [] t []
 -- Show
 instance Show Valor where
     show (Num x) =  show x
-    show (Bol True) = "true"
-    show (Bol False) = "false"
+    show (BoolVal True) = "true"
+    show (BoolVal False) = "false"
     show (Fun _) = "Funcao"
     show Unit = "()"
     show Erro = "Erro"
