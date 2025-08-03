@@ -45,11 +45,11 @@ teste14 = at (Apl (Apl (Lam "x" (Lam "y" (Som (Var "x") (Var "y")))) (Lit 3)) (L
 
 -- Teste 15: Programa com definições
 programa1 = [Def "x" (Lit 10), Def "y" (Lit 20), Def "resultado" (Som (Var "x") (Var "y"))]
-teste15 = intPrograma [] programa1 [] []
+teste15 = testPrograma [] programa1 [] []
 
 -- Teste 16: Classe e instanciação
 programa2 = [Def "Pessoa" (Class "Pessoa" ["nome", "idade"] []), Def "p1" (New "Pessoa")]
-teste16 = intPrograma [] programa2 [] []
+teste16 = testPrograma [] programa2 [] []
 
 -- Testes de casos de erro
 testeErro1 = at (Var "variavel_inexistente")   -- Erro: variável não existe
