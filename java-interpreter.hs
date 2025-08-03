@@ -48,7 +48,7 @@ type Heap = [(Id, (Id, Estado))]     -- (objID, (nomeClasse, atributosDaInstanci
 intPrograma :: Ambiente -> Programa -> Estado -> Heap -> (Valor, Estado, Heap)
 
 intPrograma a [] estado heap = (Erro, estado, heap)
-intPrograma a [Def i t] estado heap = int heap a t estado
+intPrograma a [Def i t] estado heap = evaluate heap a t estado
 intPrograma a (Def i t : ds) estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
