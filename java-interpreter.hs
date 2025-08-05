@@ -1,6 +1,6 @@
 module JavaInterpreter where
 
-type Id = String
+type Id = String 
 type Numero = Double
 
 
@@ -12,7 +12,8 @@ data Termo
     | Mul Termo Termo
     | Lam Id Termo
     | Apl Termo Termo
-    | Atr Id Termo
+    | Atr Termo Termo               -- Atribuição: pode ser Var Id ou AttrAccess
+    | AttrAccess Termo Id           -- Acesso a atributo: objeto.objeto.[seq].atributo
     | Seq Termo Termo
     | Skip                          -- Comando vazio
     | Bol Bool                      -- Literal booleano
@@ -127,9 +128,27 @@ evaluate heap amb (Apl t u) e =
     in app v1 v2 e2 h2
 
 -- Atribuição
-evaluate heap amb (Atr x t) e =
+evaluate heap amb (Atr target t) e =
     let (v1, e1, h1) = evaluate heap amb t e
-    in (v1, wr (x, v1) e1, h1)
+    in case target of
+        Var x -> (v1, wr (x, v1) e1, h1) -- Atribuição a variável
+        AttrAccess objTerm attr -> 
+            let (objVal, e2, h2) = evaluate h1 amb objTerm e1
+            in case objVal of
+                Num objID -> 
+                    let h3 = setAttr (show (round objID)) attr v1 h2
+                    in (v1, e2, h3)
+                _ -> (Erro, e2, h2)
+        _ -> (Erro, e1, h1)
+
+-- Acesso a atributo
+evaluate heap amb (AttrAccess objTerm attr) e =
+    let (objVal, e1, h1) = evaluate heap amb objTerm e
+    in case objVal of
+        Num objID -> 
+            let val = getAttr (show (round objID)) attr h1
+            in (val, e1, h1)
+        _ -> (Erro, e1, h1)
 
 -- Sequência
 evaluate heap amb (Seq t u) e =
@@ -261,6 +280,22 @@ wr (i, v) ((j, u) : l) =
     if i == j
         then (j, v) : l
         else (j, u) : wr (i, v) l
+
+-- Escrever atributo no heap
+setAttr :: Id -> Id -> Valor -> Heap -> Heap
+setAttr objID attrName val [] = []
+setAttr objID attrName val ((id, (className, attrs)) : rest) =
+    if objID == id
+        then (id, (className, wr (attrName, val) attrs)) : rest
+        else (id, (className, attrs)) : setAttr objID attrName val rest
+
+-- Buscar atributo no heap
+getAttr :: Id -> Id -> Heap -> Valor
+getAttr objID attrName [] = Erro
+getAttr objID attrName ((id, (className, attrs)) : rest) =
+    if objID == id
+        then search attrName attrs
+        else getAttr objID attrName rest
 
 -- For - implementa o loop FOR correto
 forLoop :: Heap -> Ambiente -> Termo -> Termo -> Termo -> Estado -> (Valor, Estado, Heap)
