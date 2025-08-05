@@ -26,7 +26,8 @@ data Termo
     | New Id                        -- instanciar classe
     | Interface Id [Id] [Termo]     -- nome, atributos, métodos
     | ClassAbstrata Id [Id] [Termo] -- nome, atributos, métodos
-    | For Termo Termo Termo Termo     -- For loop completo (init, cond, increment, body)
+    | For Termo Termo Termo Termo   -- For loop completo (init, cond, increment, body)
+    | InstanceOf Termo Id
     -- deriving Show
 
 type Programa = [Definicao]
@@ -211,6 +212,16 @@ evaluate heap ambiente (New nomeClasse) estado =
         -- Outros casos
         _ -> (Erro, estado, heap)
 
+-- Instaceof
+evaluate heap amb (InstanceOf objExpr className) estado =
+    let (vObj, e1, h1) = evaluate heap amb objExpr estado
+    in case vObj of
+        Num objID ->
+            case lookup (show objID) h1 of
+                Just (objClass, _) ->
+                    (BoolVal (objClass == className), e1, h1)
+                Nothing -> (Erro, e1, h1)
+        _ -> (Erro, e1, h1)
 
 -- Interface 
 evaluate heap ambiente (Interface nome attrs _) estado =
