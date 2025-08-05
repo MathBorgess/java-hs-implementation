@@ -31,7 +31,7 @@ data Termo
     -- deriving Show
 
 type Programa = [Definicao]
-data Definicao = Def Id Termo
+type Definicao = Termo
 
 -- Valor: resultados da avaliação
 data Valor
@@ -57,12 +57,12 @@ type Heap = [(Id, (Id, Estado))]     -- (objID, (nomeClasse, atributosDaInstanci
 
 testPrograma :: Ambiente -> Programa -> Estado -> Heap -> ((Valor, Estado, Heap), Ambiente)
 testPrograma a [] estado heap = ((Erro, estado, heap), a)
-testPrograma a [Def i t] estado heap =
+testPrograma a [t] estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
-                Class _ attrs mets -> (i, ClaDef attrs mets) : a
-                Interface _ attrs mets -> (i, IntDef attrs mets) : a
-                ClassAbstrata _ attrs mets -> (i, ClaAbstrataDef attrs mets) : a
+                Class name attrs mets -> (name, ClaDef attrs mets) : a
+                Interface name attrs mets -> (name, IntDef attrs mets) : a
+                ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
                 _                  ->  a
         in ((v, estado1, heap1), a1)
 testPrograma a (Def i t : ds) estado heap =
