@@ -65,32 +65,32 @@ testPrograma a [t] estado heap =
                 ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
                 _                  ->  a
         in ((v, estado1, heap1), a1)
-testPrograma a (Def i t : ds) estado heap =
+testPrograma a (t : ds) estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
-                Class _ attrs mets -> (i, ClaDef attrs mets) : a
-                Interface _ attrs mets -> (i, IntDef attrs mets) : a
-                ClassAbstrata _ attrs mets -> (i, ClaAbstrataDef attrs mets) : a
+                Class name attrs mets -> (name, ClaDef attrs mets) : a
+                Interface name attrs mets -> (name, IntDef attrs mets) : a
+                ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
                 _                  ->  a
     in testPrograma a1 ds estado1 heap1
 
 intPrograma :: Ambiente -> Programa -> Estado -> Heap -> (Valor, Estado, Heap)
 
 intPrograma a [] estado heap = (Erro, estado, heap)
-intPrograma a [Def i t] estado heap =
+intPrograma a [t] estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
-                Class _ attrs mets -> (i, ClaDef attrs mets) : a
-                Interface _ attrs mets -> (i, IntDef attrs mets) : a
-                ClassAbstrata _ attrs mets -> (i, ClaAbstrataDef attrs mets) : a
+                Class name attrs mets -> (name, ClaDef attrs mets) : a
+                Interface name attrs mets -> (name, IntDef attrs mets) : a
+                ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
                 _                  -> a
     in (v, estado1, heap1)
-intPrograma a (Def i t : ds) estado heap =
+intPrograma a (t : ds) estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
-                Class _ attrs mets -> (i, ClaDef attrs mets) : a
-                Interface _ attrs mets -> (i, IntDef attrs mets) : a
-                ClassAbstrata _ attrs mets -> (i, ClaAbstrataDef attrs mets) : a
+                Class name attrs mets -> (name, ClaDef attrs mets) : a
+                Interface name attrs mets -> (name, IntDef attrs mets) : a
+                ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
                 _                  -> a
     in intPrograma a1 ds estado1 heap1
 
