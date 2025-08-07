@@ -272,7 +272,7 @@ evaluate heap amb (InstanceOf objExpr className) estado =
     let (vObj, e1, h1) = evaluate heap amb objExpr estado
     in case vObj of
         Num objID ->
-            case lookup (show objID) h1 of
+            case lookup (show (round objID)) h1 of
                 Just (objClass, _) ->
                     (BoolVal (objClass == className), e1, h1)
                 Nothing -> (Erro, e1, h1)
