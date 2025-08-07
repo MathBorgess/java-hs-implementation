@@ -29,6 +29,9 @@ data Termo
     | ClassAbstrata Id [Id] [Termo] -- nome, atributos, métodos
     | For Termo Termo Termo Termo   -- For loop completo (init, cond, increment, body)
     | InstanceOf Termo Id
+    | This
+    | MethodCall Termo Id [Termo]   -- Chamada de método: objeto.metodo(args)
+    | Metodo Id [Id] Termo          -- Método: nome, parâmetros, corpo
     -- deriving Show
 
 type Programa = [Definicao]
@@ -286,6 +289,32 @@ evaluate heap ambiente (Interface nome attrs _) estado =
 evaluate heap ambiente (ClassAbstrata nome attrs _) estado =
     (Unit, estado, heap)  -- Ambiente será atualizado por intPrograma
 
+-- This: retorna referência ao objeto atual
+evaluate heap amb This estado = 
+    case lookup "__this__" estado of
+        Just val -> (val, estado, heap)
+        Nothing -> (Erro, estado, heap)  -- This fora de contexto de método
+
+-- Chamada de método: obj.metodo(args)
+evaluate heap amb (MethodCall objTerm metodoNome args) estado =
+    let (objVal, e1, h1) = evaluate heap amb objTerm estado  -- Avalia objeto
+    in case objVal of
+        Num objID ->
+            case lookup (show (round objID)) h1 of  -- Busca objeto na heap
+                Just (nomeClasse, _) ->
+                    case search nomeClasse amb of  -- Busca definição da classe
+                        ClaDef _ metodos ->
+                            case buscarMetodo metodoNome metodos of  -- Busca método
+                                Just metodo -> executarMetodo (show (round objID)) metodo args amb e1 h1
+                                Nothing -> (Erro, e1, h1)  -- Método não encontrado
+                        _ -> (Erro, e1, h1)  -- Classe não encontrada
+                Nothing -> (Erro, e1, h1)  -- Objeto não encontrado na heap
+        _ -> (Erro, e1, h1)  -- Não é um objeto
+
+-- Definição de método: retorna Unit (métodos são registrados na classe)
+evaluate heap ambiente (Metodo nome params corpo) estado =
+    (Unit, estado, heap)
+
 
 -- ============================================================================
 -- FUNÇÕES AUXILIARES
@@ -347,6 +376,39 @@ forLoop heap amb cond increment body estado =
         BoolVal False -> (Unit, e1, h1)                         -- Condição falsa, sai
         _ -> (Erro, e1, h1)                                     -- Erro: condição não booleana
 
+-- Buscar método na lista de métodos de uma classe
+buscarMetodo :: Id -> [Termo] -> Maybe Termo
+buscarMetodo _ [] = Nothing
+buscarMetodo nome (Metodo nomeMetodo params corpo : rest) =
+    if nome == nomeMetodo then Just (Metodo nomeMetodo params corpo)
+    else buscarMetodo nome rest
+buscarMetodo nome (_ : rest) = buscarMetodo nome rest  -- Ignora elementos que não são métodos
+
+-- Executar método com contexto de objeto
+executarMetodo :: Id -> Termo -> [Termo] -> Ambiente -> Estado -> Heap -> (Valor, Estado, Heap)
+executarMetodo objID (Metodo _ params corpo) args amb estado heap =
+    -- Avaliar argumentos
+    let (valsArgs, estadoFinal, heapFinal) = avaliarArgs args amb estado heap
+    in if length valsArgs == length params
+        then
+            --  estado local isolado
+            let estadoLocal = ("__this__", Num (read objID)) : zip params valsArgs
+                -- Combinar para permitir acesso a variáveis globais
+                estadoCombinado = estadoLocal ++ estadoFinal
+                (resultado, _, heapResultado) = evaluate heapFinal amb corpo estadoCombinado
+                -- Retornar estado original inalterado
+            in (resultado, estadoFinal, heapResultado)
+        else (Erro, estadoFinal, heapFinal)
+executarMetodo _ _ _ _ estado heap = (Erro, estado, heap)
+
+-- Avaliar lista de argumentos
+avaliarArgs :: [Termo] -> Ambiente -> Estado -> Heap -> ([Valor], Estado, Heap)
+avaliarArgs [] _ estado heap = ([], estado, heap)
+avaliarArgs (arg:rest) amb estado heap =
+    let (val, e1, h1) = evaluate heap amb arg estado
+        (vals, e2, h2) = avaliarArgs rest amb e1 h1
+    in (val:vals, e2, h2)
+
 
 -- Executar um termo
 at :: Termo -> (Valor, Estado, Heap)
@@ -362,3 +424,4 @@ instance Show Valor where
     show Erro = "Erro"
     show Null = "Null"
     show (ClaDef attrs _) = "<classe com atributos: " ++ show attrs ++ ">"
+
