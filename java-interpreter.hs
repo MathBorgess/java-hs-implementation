@@ -14,7 +14,7 @@ data Termo
     | Lam Id Termo
     | Apl Termo Termo
     | Atr Termo Termo               -- Atribuição: pode ser Var Id ou AttrAccess
-    | AttrAccess Termo Id           -- Acesso a atributo: objeto.objeto.[seq].atributo
+    | AttrAccess Termo Id           -- Acesso a atributo (com encadeamento)
     | Seq Termo Termo
     | Skip                          -- Comando vazio
     | Bol Bool                      -- Literal booleano
