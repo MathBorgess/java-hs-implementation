@@ -37,12 +37,12 @@ main = do
     putStrLn "=== Teste 3: Função Saudar ==="
     let testeSaudar = [
             Function "saudar" ["nome"] (Som (LitStr "Ola, ") (Var "nome")),
-            FunctionCall "saudar" [LitStr "Gabriel"]
+            FunctionCall "saudar" [LitStr "Mundo"]
             ]
     let resultadoSaudar = testPrograma [] testeSaudar [] []
-    putStrLn "Programa: function saudar(nome) = \"Ola, \" + nome; saudar(\"Gabriel\")"
+    putStrLn "Programa: function saudar(nome) = \"Ola, \" + nome; saudar(\"Mundo\")"
     putStrLn $ "Resultado: " ++ show resultadoSaudar
-    putStrLn "Esperado: ((\"Ola, Gabriel\",[],[]),[...])"
+    putStrLn "Esperado: ((\"Ola, Mundo\",[],[]),[...])"
     putStrLn ""
     
     -- Teste 4: Função soma de quadrados (função chamando função)
@@ -108,3 +108,18 @@ main = do
     putStrLn "Esperado: ((3.14159,[],[]),[...])"
     putStrLn ""
 
+    -- Teste 8: Recursão
+    putStrLn "=== Teste 8: Recursão ==="
+    let testeRecursao = [
+            Function "fatorial" ["n"] (
+                Iff (Ig (Var "n") (Lit 0))
+                    (Lit 1)
+                    (Mul (Var "n") (FunctionCall "fatorial" [Som (Var "n") (Lit (-1))]))
+            ),
+            FunctionCall "fatorial" [Lit 5]
+            ]
+    let resultadoRecursao = testPrograma [] testeRecursao [] []
+    putStrLn "Programa: function fatorial(n) = if (n == 0) then 1 else n * fatorial(n - 1); fatorial(5)"
+    putStrLn $ "Resultado: " ++ show resultadoRecursao
+    putStrLn "Esperado: ((120.0,[],[]),[...])"
+    putStrLn ""
