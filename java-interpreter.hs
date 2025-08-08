@@ -33,6 +33,8 @@ data Termo
     | This
     | MethodCall Termo Id [Termo]   -- Chamada de método: objeto.metodo(args)
     | Metodo Id [Id] Termo          -- Método: nome, parâmetros, corpo
+    | Function Id [Id] Termo        -- Função independente: nome, parâmetros, corpo
+    | FunctionCall Id [Termo]       -- Chamada de função: nomeFuncao(args)
     -- deriving Show
 
 type Programa = [Definicao]
@@ -48,10 +50,9 @@ data Valor
     | Erro
     | Null
     | ClaDef [Id] [Termo]               -- Definição de classe
-    -- Interface
     | IntDef [Id] [Termo]               -- Definição de interface
-    -- Classe Abstrata
     | ClaAbstrataDef [Id] [Termo]       -- Definição de classe abstrata
+    | FunDef [Id] Termo                 -- Definição de função independente: parâmetros, corpo
     -- deriving Eq
 
 type Estado = [(Id, Valor)]          -- Estado mutável
@@ -68,6 +69,7 @@ testPrograma a [t] estado heap =
                 Class name attrs mets -> (name, ClaDef attrs mets) : a
                 Interface name attrs mets -> (name, IntDef attrs mets) : a
                 ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
+                Function name params corpo -> (name, FunDef params corpo) : a
                 _                  ->  a
         in ((v, estado1, heap1), a1)
 testPrograma a (t : ds) estado heap =
@@ -76,6 +78,7 @@ testPrograma a (t : ds) estado heap =
                 Class name attrs mets -> (name, ClaDef attrs mets) : a
                 Interface name attrs mets -> (name, IntDef attrs mets) : a
                 ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
+                Function name params corpo -> (name, FunDef params corpo) : a
                 _                  ->  a
     in testPrograma a1 ds estado1 heap1
 
@@ -88,6 +91,7 @@ intPrograma a [t] estado heap =
                 Class name attrs mets -> (name, ClaDef attrs mets) : a
                 Interface name attrs mets -> (name, IntDef attrs mets) : a
                 ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
+                Function name params corpo -> (name, FunDef params corpo) : a
                 _                  -> a
     in (v, estado1, heap1)
 intPrograma a (t : ds) estado heap =
@@ -96,6 +100,7 @@ intPrograma a (t : ds) estado heap =
                 Class name attrs mets -> (name, ClaDef attrs mets) : a
                 Interface name attrs mets -> (name, IntDef attrs mets) : a
                 ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
+                Function name params corpo -> (name, FunDef params corpo) : a
                 _                  -> a
     in intPrograma a1 ds estado1 heap1
 
@@ -177,7 +182,7 @@ evaluate heap amb (Not t) e =
 
 
 -- ============================================================================
--- FUNÇÕES LAMBDA E APLICAÇÃO
+-- FUNÇÕES: LAMBDA, APLICAÇÃO E FUNÇÕES INDEPENDENTES
 -- ============================================================================
 
 -- Lambda
@@ -188,6 +193,26 @@ evaluate heap amb (Apl t u) e =
     let (v1, e1, h1) = evaluate heap amb t e
         (v2, e2, h2) = evaluate h1 amb u e1
     in app v1 v2 e2 h2
+
+-- Função independente
+evaluate heap ambiente (Function nome params corpo) estado =
+    (Unit, estado, heap)
+
+-- Chamada função independente
+evaluate heap amb (FunctionCall nomeFuncao args) estado =
+    case search nomeFuncao amb of
+        FunDef params corpo ->
+            let (valsArgs, estadoFinal, heapFinal) = avaliarArgs args amb estado heap
+            in if length valsArgs == length params
+                then
+                    -- Cria estado local apenas com parâmetros (sem __this__)
+                    let estadoLocal = zip params valsArgs
+                        -- Combina com estado atual para acesso a variáveis globais
+                        estadoCombinado = estadoLocal ++ estadoFinal
+                        (resultado, _, heapResultado) = evaluate heapFinal amb corpo estadoCombinado
+                    in (resultado, estadoFinal, heapResultado)
+                else (Erro, estadoFinal, heapFinal)
+        _ -> (Erro, estado, heap)  -- Função não encontrada
 
 
 -- ============================================================================
@@ -320,7 +345,6 @@ evaluate heap amb (MethodCall objTerm metodoNome args) estado =
 evaluate heap ambiente (Metodo nome params corpo) estado =
     (Unit, estado, heap)
 
-
 -- ============================================================================
 -- FUNÇÕES AUXILIARES
 -- ============================================================================
@@ -422,7 +446,6 @@ avaliarArgs (arg:rest) amb estado heap =
 at :: Termo -> (Valor, Estado, Heap)
 at t = evaluate [] [] t []
 
--- Show
 instance Show Valor where
     show (Num x) =  show x
     show (Str s) = "\"" ++ s ++ "\""
@@ -433,4 +456,5 @@ instance Show Valor where
     show Erro = "Erro"
     show Null = "Null"
     show (ClaDef attrs _) = "<classe com atributos: " ++ show attrs ++ ">"
+    show (FunDef params _) = "<funcao com parametros: " ++ show params ++ ">"
 
