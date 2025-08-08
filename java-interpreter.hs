@@ -8,6 +8,7 @@ type Numero = Double
 data Termo
     = Var Id
     | Lit Numero
+    | LitStr String                 -- Literal de string
     | Som Termo Termo
     | Mul Termo Termo
     | Lam Id Termo
@@ -40,6 +41,7 @@ type Definicao = Termo
 -- Valor: resultados da avaliação
 data Valor
     = Num Double
+    | Str String                        -- Valor string
     | BoolVal Bool
     | Fun (Valor -> Estado -> (Valor, Estado))
     | Unit
@@ -107,6 +109,8 @@ evaluate :: Heap -> Ambiente -> Termo -> Estado -> (Valor, Estado, Heap)
 
 -- Literais numéricos
 evaluate heap _ (Lit n) e = (Num n, e, heap)
+-- Literais de string
+evaluate heap _ (LitStr s) e = (Str s, e, heap)
 -- Literais booleanos
 evaluate heap _ (Bol b) e = (BoolVal b, e, heap)
 -- Comando vazio: não faz nada, retorna Unit
@@ -139,6 +143,7 @@ evaluate heap amb (Ig t u) e =
         (v2, e2, _) = evaluate heap amb u e1     
     in case (v1, v2) of
         (Num x, Num y)         -> (BoolVal (x == y), e2, heap)
+        (Str x, Str y)         -> (BoolVal (x == y), e2, heap)
         (BoolVal x, BoolVal y) -> (BoolVal (x == y), e2, heap)
         (Unit, Unit)           -> (BoolVal True, e2, heap)
         _                      -> (Erro, e2, heap)
@@ -245,7 +250,7 @@ evaluate heap amb (Seq t u) e =
 evaluate heap ambiente (Class nome attrs _) estado =
     (Unit, estado, heap)  
 
--- Instanciação de classe
+-- Instanciação de Objeto
 evaluate heap ambiente (New nomeClasse) estado =
     case search nomeClasse ambiente of
         ClaDef attrs _ ->
@@ -261,7 +266,7 @@ evaluate heap ambiente (New nomeClasse) estado =
         -- Outros casos
         _ -> (Erro, estado, heap)
 
--- Acesso a atributo: obj.attr
+-- Acesso a atributo: obj.attr (suporta encadeamento: obj1.obj2.attr)
 evaluate heap amb (AttrAccess objTerm attr) e =
     let (objVal, e1, h1) = evaluate heap amb objTerm e
     in case objVal of
@@ -328,6 +333,9 @@ search i ((j, v) : l) = if i == j then v else search i l
 -- Operações aritméticas
 somaVal :: Valor -> Valor -> Valor
 somaVal (Num x) (Num y) = Num (x + y)
+somaVal (Str x) (Str y) = Str (x ++ y)
+somaVal (Str x) (Num y) = Str (x ++ show y)
+somaVal (Num x) (Str y) = Str (show x ++ y)
 somaVal _ _ = Erro
 
 multiplica :: Valor -> Valor -> Valor
@@ -417,6 +425,7 @@ at t = evaluate [] [] t []
 -- Show
 instance Show Valor where
     show (Num x) =  show x
+    show (Str s) = "\"" ++ s ++ "\""
     show (BoolVal True) = "true"
     show (BoolVal False) = "false"
     show (Fun _) = "Funcao"
