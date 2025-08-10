@@ -37,8 +37,9 @@ data Termo
     | FunctionCall Id [Termo]       -- Chamada de função: nomeFuncao(args)
     -- deriving Show
 
-type Programa = [Definicao]
+
 type Definicao = Termo
+type Programa = [Definicao]
 
 -- Valor: resultados da avaliação
 data Valor
@@ -113,17 +114,16 @@ evaluate :: Heap -> Ambiente -> Termo -> Estado -> (Valor, Estado, Heap)
 -- ============================================================================
 
 -- Literais numéricos
-evaluate heap _ (Lit n) e = (Num n, e, heap)
+evaluate heap _ (Lit n) estado = (Num n, estado, heap)
 -- Literais de string
-evaluate heap _ (LitStr s) e = (Str s, e, heap)
+evaluate heap _ (LitStr s) estado = (Str s, estado, heap)
 -- Literais booleanos
-evaluate heap _ (Bol b) e = (BoolVal b, e, heap)
+evaluate heap _ (Bol b) estado = (BoolVal b, estado, heap)
 -- Comando vazio: não faz nada, retorna Unit
-evaluate heap _ Skip e    = (Unit, e, heap)
+evaluate heap _ Skip estado    = (Unit, estado, heap)
 
--- Variáveis: busca o valor no ambiente (global) + estado (local)
--- Prioridade: estado local sobrescreve ambiente global
-evaluate heap amb (Var x) e = (search x (amb ++ e), e, heap)
+-- Variáveis: busca o valor no  estado (local)  ++  ambiente (global)
+evaluate heap ambiente (Var x) estado = (search x (estado ++ ambiente), estado, heap)
 
 
 -- ============================================================================
@@ -131,54 +131,54 @@ evaluate heap amb (Var x) e = (search x (amb ++ e), e, heap)
 -- ============================================================================
 
 -- Soma
-evaluate heap amb (Som t u) e =
-    let (v1, e1, _) = evaluate heap amb t e
-        (v2, e2, _) = evaluate heap amb u e1
-    in (somaVal v1 v2, e2, heap)
+evaluate heap ambiente (Som t u) estado =
+    let (v1, estado1, _) = evaluate heap ambiente t estado
+        (v2, estado2, _) = evaluate heap ambiente u estado1
+    in (somaVal v1 v2, estado2, heap)
 
 -- Multiplicação
-evaluate heap amb (Mul t u) e =
-    let (v1, e1, _) = evaluate heap amb t e
-        (v2, e2, _) = evaluate heap amb u e1
-    in (multiplica v1 v2, e2, heap)
+evaluate heap ambiente (Mul t u) estado =
+    let (v1, estado1, _) = evaluate heap ambiente t estado
+        (v2, estado2, _) = evaluate heap ambiente u estado1
+    in (multiplica v1 v2, estado2, heap)
 
 -- Igualdade
-evaluate heap amb (Ig t u) e =
-    let (v1, e1, _) = evaluate heap amb t e      
-        (v2, e2, _) = evaluate heap amb u e1     
+evaluate heap ambiente (Ig t u) estado =
+    let (v1, estado1, _) = evaluate heap ambiente t estado      
+        (v2, estado2, _) = evaluate heap ambiente u estado1     
     in case (v1, v2) of
-        (Num x, Num y)         -> (BoolVal (x == y), e2, heap)
-        (Str x, Str y)         -> (BoolVal (x == y), e2, heap)
-        (BoolVal x, BoolVal y) -> (BoolVal (x == y), e2, heap)
-        (Unit, Unit)           -> (BoolVal True, e2, heap)
-        _                      -> (Erro, e2, heap)
+        (Num x, Num y)         -> (BoolVal (x == y), estado2, heap)
+        (Str x, Str y)         -> (BoolVal (x == y), estado2, heap)
+        (BoolVal x, BoolVal y) -> (BoolVal (x == y), estado2, heap)
+        (Unit, Unit)           -> (BoolVal True, estado2, heap)
+        _                      -> (Erro, estado2, heap)
 
 -- Comparação menor que
-evaluate heap amb (Menor t u) e =
-    let (v1, e1, _) = evaluate heap amb t e      
-        (v2, e2, _) = evaluate heap amb u e1     
+evaluate heap ambiente (Menor t u) estado =
+    let (v1, estado1, _) = evaluate heap ambiente t estado      
+        (v2, estado2, _) = evaluate heap ambiente u estado1     
     in case (v1, v2) of
-        (Num x, Num y) -> (BoolVal (x < y), e2, heap)
-        _              -> (Erro, e2, heap)
+        (Num x, Num y) -> (BoolVal (x < y), estado2, heap)
+        _              -> (Erro, estado2, heap)
 
 -- AND
-evaluate heap amb (And t u) e =
-    let (v1, e1, _) = evaluate heap amb t e      
+evaluate heap ambiente (And t u) estado =
+    let (v1, estado1, _) = evaluate heap ambiente t estado      
     in case v1 of
-        BoolVal False -> (BoolVal False, e1, heap)    
+        BoolVal False -> (BoolVal False, estado1, heap)    
         BoolVal True ->
-            let (v2, e2, _) = evaluate heap amb u e1  
+            let (v2, estado2, _) = evaluate heap ambiente u estado1  
             in case v2 of
-                BoolVal b -> (BoolVal b, e2, heap)
-                _         -> (Erro, e2, heap)
-        _ -> (Erro, e1, heap)
+                BoolVal b -> (BoolVal b, estado2, heap)
+                _         -> (Erro, estado2, heap)
+        _ -> (Erro, estado1, heap)
 
 -- NOT 
-evaluate heap amb (Not t) e =
-    let (v, e1, _) = evaluate heap amb t e      
+evaluate heap ambiente (Not t) estado =
+    let (v, estado1, _) = evaluate heap ambiente t estado      
     in case v of
-        BoolVal b -> (BoolVal (not b), e1, heap)
-        _         -> (Erro, e1, heap)
+        BoolVal b -> (BoolVal (not b), estado1, heap)
+        _         -> (Erro, estado1, heap)
 
 
 -- ============================================================================
@@ -186,30 +186,30 @@ evaluate heap amb (Not t) e =
 -- ============================================================================
 
 -- Lambda
-evaluate heap amb (Lam x t) e = (Fun (\v st -> let (res, st2, _) = evaluate heap ((x,v):amb) t st in (res, st2)), e, heap)
+evaluate heap ambiente (Lam x t) estado = (Fun (\v st -> let (res, st2, _) = evaluate heap ((x,v):ambiente) t st in (res, st2)), estado, heap)
 
 -- Aplicação
-evaluate heap amb (Apl t u) e =
-    let (v1, e1, h1) = evaluate heap amb t e
-        (v2, e2, h2) = evaluate h1 amb u e1
-    in app v1 v2 e2 h2
+evaluate heap ambiente (Apl t u) estado =
+    let (v1, estado1, h1) = evaluate heap ambiente t estado
+        (v2, estado2, h2) = evaluate h1 ambiente u estado1
+    in app v1 v2 estado2 h2
 
 -- Função independente
 evaluate heap ambiente (Function nome params corpo) estado =
     (Unit, estado, heap)
 
 -- Chamada função independente
-evaluate heap amb (FunctionCall nomeFuncao args) estado =
-    case search nomeFuncao amb of
+evaluate heap ambiente (FunctionCall nomeFuncao args) estado =
+    case search nomeFuncao ambiente of
         FunDef params corpo ->
-            let (valsArgs, estadoFinal, heapFinal) = avaliarArgs args amb estado heap
+            let (valsArgs, estadoFinal, heapFinal) = avaliarArgs args ambiente estado heap
             in if length valsArgs == length params
                 then
                     -- Cria estado local apenas com parâmetros (sem __this__)
                     let estadoLocal = zip params valsArgs
                         -- Combina com estado atual para acesso a variáveis globais
                         estadoCombinado = estadoLocal ++ estadoFinal
-                        (resultado, _, heapResultado) = evaluate heapFinal amb corpo estadoCombinado
+                        (resultado, _, heapResultado) = evaluate heapFinal ambiente corpo estadoCombinado
                     in (resultado, estadoFinal, heapResultado)
                 else (Erro, estadoFinal, heapFinal)
         _ -> (Erro, estado, heap)  -- Função não encontrada
@@ -220,18 +220,18 @@ evaluate heap amb (FunctionCall nomeFuncao args) estado =
 -- ============================================================================
 
 -- Atribuição: var = valor ou obj.attr = valor
-evaluate heap amb (Atr target t) e =
-    let (v1, e1, h1) = evaluate heap amb t e
+evaluate heap ambiente (Atr target t) estado =
+    let (v1, estado1, h1) = evaluate heap ambiente t estado
     in case target of
-        Var x -> (v1, wr (x, v1) e1, h1) -- Atribuição a variável
+        Var x -> (v1, wr (x, v1) estado1, h1) -- Atribuição a variável
         AttrAccess objTerm attr -> 
-            let (objVal, e2, h2) = evaluate h1 amb objTerm e1
+            let (objVal, estado2, h2) = evaluate h1 ambiente objTerm estado1
             in case objVal of
                 Num objID -> 
                     let h3 = setAttr (show (round objID)) attr v1 h2
-                    in (v1, e2, h3)
-                _ -> (Erro, e2, h2)
-        _ -> (Erro, e1, h1)
+                    in (v1, estado2, h3)
+                _ -> (Erro, estado2, h2)
+        _ -> (Erro, estado1, h1)
 
 
 -- ============================================================================
@@ -239,22 +239,22 @@ evaluate heap amb (Atr target t) e =
 -- ============================================================================
 
 -- If-Else
-evaluate heap amb (Iff cond t1 t2) e =
-    let (v, e1, h1) = evaluate heap amb cond e
+evaluate heap ambiente (Iff cond t1 t2) estado =
+    let (v, estado1, h1) = evaluate heap ambiente cond estado
     in case v of
-        BoolVal True  -> evaluate h1 amb t1 e1
-        BoolVal False -> evaluate h1 amb t2 e1
-        _         -> (Erro, e1, h1)
+        BoolVal True  -> evaluate h1 ambiente t1 estado1
+        BoolVal False -> evaluate h1 ambiente t2 estado1
+        _         -> (Erro, estado1, h1)
 
 -- WHILE
-evaluate heap amb (While cond body) e =
-    let (v, e1, h1) = evaluate heap amb cond e
+evaluate heap ambiente (While cond body) estado =
+    let (v, estado1, h1) = evaluate heap ambiente cond estado
     in case v of
         BoolVal True ->
-            let (_, e2, h2) = evaluate h1 amb body e1
-            in evaluate h2 amb (While cond body) e2
-        BoolVal False -> (Unit, e1, h1)
-        _         -> (Erro, e1, h1)
+            let (_, estado2, h2) = evaluate h1 ambiente body estado1
+            in evaluate h2 ambiente (While cond body) estado2
+        BoolVal False -> (Unit, estado1, h1)
+        _         -> (Erro, estado1, h1)
 
 -- For: loop completo com inicialização, condição, incremento e corpo
 evaluate heap ambiente (For init cond increment body) estado =
@@ -262,9 +262,9 @@ evaluate heap ambiente (For init cond increment body) estado =
     in forLoop heap1 ambiente cond increment body estado1
 
 -- Sequência
-evaluate heap amb (Seq t u) e =
-    let (_, e1, h1) = evaluate heap amb t e
-    in evaluate h1 amb u e1
+evaluate heap ambiente (Seq t u) estado =
+    let (_, estado1, h1) = evaluate heap ambiente t estado
+    in evaluate h1 ambiente u estado1
 
 
 -- ============================================================================
@@ -292,24 +292,24 @@ evaluate heap ambiente (New nomeClasse) estado =
         _ -> (Erro, estado, heap)
 
 -- Acesso a atributo: obj.attr (suporta encadeamento: obj1.obj2.attr)
-evaluate heap amb (AttrAccess objTerm attr) e =
-    let (objVal, e1, h1) = evaluate heap amb objTerm e
+evaluate heap ambiente (AttrAccess objTerm attr) estado =
+    let (objVal, estado1, h1) = evaluate heap ambiente objTerm estado
     in case objVal of
         Num objID -> 
             let val = getAttr (show (round objID)) attr h1
-            in (val, e1, h1)
-        _ -> (Erro, e1, h1)
+            in (val, estado1, h1)
+        _ -> (Erro, estado1, h1)
 
 -- Instaceof
-evaluate heap amb (InstanceOf objExpr className) estado =
-    let (vObj, e1, h1) = evaluate heap amb objExpr estado
+evaluate heap ambiente (InstanceOf objExpr className) estado =
+    let (vObj, estado1, h1) = evaluate heap ambiente objExpr estado
     in case vObj of
         Num objID ->
             case lookup (show (round objID)) h1 of
                 Just (objClass, _) ->
-                    (BoolVal (objClass == className), e1, h1)
-                Nothing -> (Erro, e1, h1)
-        _ -> (Erro, e1, h1)
+                    (BoolVal (objClass == className), estado1, h1)
+                Nothing -> (Erro, estado1, h1)
+        _ -> (Erro, estado1, h1)
 
 -- Interface 
 evaluate heap ambiente (Interface nome attrs _) estado =
@@ -320,26 +320,26 @@ evaluate heap ambiente (ClassAbstrata nome attrs _) estado =
     (Unit, estado, heap)  -- Ambiente será atualizado por intPrograma
 
 -- This: retorna referência ao objeto atual
-evaluate heap amb This estado = 
+evaluate heap ambiente This estado = 
     case lookup "__this__" estado of
         Just val -> (val, estado, heap)
         Nothing -> (Erro, estado, heap)  -- This fora de contexto de método
 
 -- Chamada de método: obj.metodo(args)
-evaluate heap amb (MethodCall objTerm metodoNome args) estado =
-    let (objVal, e1, h1) = evaluate heap amb objTerm estado  -- Avalia objeto
+evaluate heap ambiente (MethodCall objTerm metodoNome args) estado =
+    let (objVal, estado1, h1) = evaluate heap ambiente objTerm estado  -- Avalia objeto
     in case objVal of
         Num objID ->
             case lookup (show (round objID)) h1 of  -- Busca objeto na heap
                 Just (nomeClasse, _) ->
-                    case search nomeClasse amb of  -- Busca definição da classe
+                    case search nomeClasse ambiente of  -- Busca definição da classe
                         ClaDef _ metodos ->
                             case buscarMetodo metodoNome metodos of  -- Busca método
-                                Just metodo -> executarMetodo (show (round objID)) metodo args amb e1 h1
-                                Nothing -> (Erro, e1, h1)  -- Método não encontrado
-                        _ -> (Erro, e1, h1)  -- Classe não encontrada
-                Nothing -> (Erro, e1, h1)  -- Objeto não encontrado na heap
-        _ -> (Erro, e1, h1)  -- Não é um objeto
+                                Just metodo -> executarMetodo (show (round objID)) metodo args ambiente estado1 h1
+                                Nothing -> (Erro, estado1, h1)  -- Método não encontrado
+                        _ -> (Erro, estado1, h1)  -- Classe não encontrada
+                Nothing -> (Erro, estado1, h1)  -- Objeto não encontrado na heap
+        _ -> (Erro, estado1, h1)  -- Não é um objeto
 
 -- Definição de método: retorna Unit (métodos são registrados na classe)
 evaluate heap ambiente (Metodo nome params corpo) estado =
@@ -368,10 +368,10 @@ multiplica _ _ = Erro
 
 -- Aplicação de função
 app :: Valor -> Valor -> Estado -> Heap -> (Valor, Estado, Heap)
-app (Fun f) v e h =
-    let (res, e2) = f v e
-    in (res, e2, h)
-app _ _ e h = (Erro, e, h)
+app (Fun f) v estado h =
+    let (res, estado2) = f v estado
+    in (res, estado2, h)
+app _ _ estado h = (Erro, estado, h)
 
 -- Atualização de estado (variáveis)
 wr :: (Id, Valor) -> Estado -> Estado
@@ -398,15 +398,15 @@ getAttr objID attrName ((id, (className, attrs)) : rest) =
 
 -- Implementação do loop FOR
 forLoop :: Heap -> Ambiente -> Termo -> Termo -> Termo -> Estado -> (Valor, Estado, Heap)
-forLoop heap amb cond increment body estado =
-    let (v_cond, e1, h1) = evaluate heap amb cond estado
+forLoop heap ambiente cond increment body estado =
+    let (v_cond, estado1, h1) = evaluate heap ambiente cond estado
     in case v_cond of
         BoolVal True ->
-            let (_, e2, h2) = evaluate h1 amb body e1           -- Executa corpo
-                (_, e3, h3) = evaluate h2 amb increment e2      -- Executa incremento
-            in forLoop h3 amb cond increment body e3            -- Recursão
-        BoolVal False -> (Unit, e1, h1)                         -- Condição falsa, sai
-        _ -> (Erro, e1, h1)                                     -- Erro: condição não booleana
+            let (_, estado2, h2) = evaluate h1 ambiente body estado1           -- Executa corpo
+                (_, estado3, h3) = evaluate h2 ambiente increment estado2      -- Executa incremento
+            in forLoop h3 ambiente cond increment body estado3            -- Recursão
+        BoolVal False -> (Unit, estado1, h1)                         -- Condição falsa, sai
+        _ -> (Erro, estado1, h1)                                     -- Erro: condição não booleana
 
 -- Buscar método na lista de métodos de uma classe
 buscarMetodo :: Id -> [Termo] -> Maybe Termo
@@ -418,16 +418,16 @@ buscarMetodo nome (_ : rest) = buscarMetodo nome rest  -- Ignora elementos que n
 
 -- Executar método com contexto de objeto
 executarMetodo :: Id -> Termo -> [Termo] -> Ambiente -> Estado -> Heap -> (Valor, Estado, Heap)
-executarMetodo objID (Metodo _ params corpo) args amb estado heap =
+executarMetodo objID (Metodo _ params corpo) args ambiente estado heap =
     -- Avaliar argumentos
-    let (valsArgs, estadoFinal, heapFinal) = avaliarArgs args amb estado heap
+    let (valsArgs, estadoFinal, heapFinal) = avaliarArgs args ambiente estado heap
     in if length valsArgs == length params
         then
             --  estado local isolado
             let estadoLocal = ("__this__", Num (read objID)) : zip params valsArgs
                 -- Combinar para permitir acesso a variáveis globais
                 estadoCombinado = estadoLocal ++ estadoFinal
-                (resultado, _, heapResultado) = evaluate heapFinal amb corpo estadoCombinado
+                (resultado, _, heapResultado) = evaluate heapFinal ambiente corpo estadoCombinado
                 -- Retornar estado original inalterado
             in (resultado, estadoFinal, heapResultado)
         else (Erro, estadoFinal, heapFinal)
@@ -436,10 +436,10 @@ executarMetodo _ _ _ _ estado heap = (Erro, estado, heap)
 -- Avaliar lista de argumentos
 avaliarArgs :: [Termo] -> Ambiente -> Estado -> Heap -> ([Valor], Estado, Heap)
 avaliarArgs [] _ estado heap = ([], estado, heap)
-avaliarArgs (arg:rest) amb estado heap =
-    let (val, e1, h1) = evaluate heap amb arg estado
-        (vals, e2, h2) = avaliarArgs rest amb e1 h1
-    in (val:vals, e2, h2)
+avaliarArgs (arg:rest) ambiente estado heap =
+    let (val, estado1, h1) = evaluate heap ambiente arg estado
+        (vals, estado2, h2) = avaliarArgs rest ambiente estado1 h1
+    in (val:vals, estado2, h2)
 
 
 -- Executar um termo
@@ -456,5 +456,7 @@ instance Show Valor where
     show Erro = "Erro"
     show Null = "Null"
     show (ClaDef attrs _) = "<classe com atributos: " ++ show attrs ++ ">"
+    show (IntDef attrs _) = "<interface com atributos: " ++ show attrs ++ ">"           
+    show (ClaAbstrataDef attrs _) = "<classe abstrata com atributos: " ++ show attrs ++ ">"  
     show (FunDef params _) = "<funcao com parametros: " ++ show params ++ ">"
 
