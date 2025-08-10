@@ -132,53 +132,53 @@ evaluate heap ambiente (Var x) estado = (search x (estado ++ ambiente), estado, 
 
 -- Soma
 evaluate heap ambiente (Som t u) estado =
-    let (v1, estado1, _) = evaluate heap ambiente t estado
-        (v2, estado2, _) = evaluate heap ambiente u estado1
-    in (somaVal v1 v2, estado2, heap)
+    let (v1, estado1, h1) = evaluate heap ambiente t estado
+        (v2, estado2, h2) = evaluate h1 ambiente u estado1
+    in (somaVal v1 v2, estado2, h2)
 
 -- Multiplicação
 evaluate heap ambiente (Mul t u) estado =
-    let (v1, estado1, _) = evaluate heap ambiente t estado
-        (v2, estado2, _) = evaluate heap ambiente u estado1
-    in (multiplica v1 v2, estado2, heap)
+    let (v1, estado1, h1) = evaluate heap ambiente t estado
+        (v2, estado2, h2) = evaluate h1 ambiente u estado1
+    in (multiplica v1 v2, estado2, h2)
 
 -- Igualdade
 evaluate heap ambiente (Ig t u) estado =
-    let (v1, estado1, _) = evaluate heap ambiente t estado      
-        (v2, estado2, _) = evaluate heap ambiente u estado1     
+    let (v1, estado1, h1) = evaluate heap ambiente t estado
+        (v2, estado2, h2) = evaluate h1 ambiente u estado1
     in case (v1, v2) of
-        (Num x, Num y)         -> (BoolVal (x == y), estado2, heap)
-        (Str x, Str y)         -> (BoolVal (x == y), estado2, heap)
-        (BoolVal x, BoolVal y) -> (BoolVal (x == y), estado2, heap)
-        (Void, Void)           -> (BoolVal True, estado2, heap)
-        _                      -> (Erro, estado2, heap)
+        (Num x, Num y)         -> (BoolVal (x == y), estado2, h2)
+        (Str x, Str y)         -> (BoolVal (x == y), estado2, h2)
+        (BoolVal x, BoolVal y) -> (BoolVal (x == y), estado2, h2)
+        (Void, Void)           -> (BoolVal True, estado2, h2)
+        _                      -> (Erro, estado2, h2)
 
 -- Comparação menor que
 evaluate heap ambiente (Menor t u) estado =
-    let (v1, estado1, _) = evaluate heap ambiente t estado      
-        (v2, estado2, _) = evaluate heap ambiente u estado1     
+    let (v1, estado1, h1) = evaluate heap ambiente t estado
+        (v2, estado2, h2) = evaluate h1 ambiente u estado1
     in case (v1, v2) of
-        (Num x, Num y) -> (BoolVal (x < y), estado2, heap)
-        _              -> (Erro, estado2, heap)
+        (Num x, Num y) -> (BoolVal (x < y), estado2, h2)
+        _              -> (Erro, estado2, h2)
 
 -- AND
 evaluate heap ambiente (And t u) estado =
-    let (v1, estado1, _) = evaluate heap ambiente t estado      
+    let (v1, estado1, h1) = evaluate heap ambiente t estado
     in case v1 of
-        BoolVal False -> (BoolVal False, estado1, heap)    
+        BoolVal False -> (BoolVal False, estado1, h1)
         BoolVal True ->
-            let (v2, estado2, _) = evaluate heap ambiente u estado1  
+            let (v2, estado2, h2) = evaluate h1 ambiente u estado1
             in case v2 of
-                BoolVal b -> (BoolVal b, estado2, heap)
-                _         -> (Erro, estado2, heap)
-        _ -> (Erro, estado1, heap)
+                BoolVal b -> (BoolVal b, estado2, h2)
+                _         -> (Erro, estado2, h2)
+        _ -> (Erro, estado1, h1)
 
 -- NOT 
 evaluate heap ambiente (Not t) estado =
-    let (v, estado1, _) = evaluate heap ambiente t estado      
+    let (v, estado1, h1) = evaluate heap ambiente t estado
     in case v of
-        BoolVal b -> (BoolVal (not b), estado1, heap)
-        _         -> (Erro, estado1, heap)
+        BoolVal b -> (BoolVal (not b), estado1, h1)
+        _         -> (Erro, estado1, h1)
 
 
 -- ============================================================================
