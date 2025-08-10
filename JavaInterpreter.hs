@@ -47,7 +47,7 @@ data Valor
     | Str String                        -- Valor string
     | BoolVal Bool
     | FunLamb (Valor -> Estado -> (Valor, Estado))
-    | Unit                              
+    | Void                              -- Retorno vazio de uma execução bem-sucedida
     | Erro
     | Null
     | ClaDef [Id] [Termo]               -- Definição de classe
@@ -119,8 +119,8 @@ evaluate heap _ (Lit n) estado = (Num n, estado, heap)
 evaluate heap _ (LitStr s) estado = (Str s, estado, heap)
 -- Literais booleanos
 evaluate heap _ (Bol b) estado = (BoolVal b, estado, heap)
--- Comando vazio: não faz nada, retorna Unit
-evaluate heap _ Skip estado    = (Unit, estado, heap)
+-- Comando vazio: não faz nada, retorna Void
+evaluate heap _ Skip estado    = (Void, estado, heap)
 
 -- Variáveis: busca o valor no  estado (local)  ++  ambiente (global)
 evaluate heap ambiente (Var x) estado = (search x (estado ++ ambiente), estado, heap)
@@ -150,7 +150,7 @@ evaluate heap ambiente (Ig t u) estado =
         (Num x, Num y)         -> (BoolVal (x == y), estado2, heap)
         (Str x, Str y)         -> (BoolVal (x == y), estado2, heap)
         (BoolVal x, BoolVal y) -> (BoolVal (x == y), estado2, heap)
-        (Unit, Unit)           -> (BoolVal True, estado2, heap)
+        (Void, Void)           -> (BoolVal True, estado2, heap)
         _                      -> (Erro, estado2, heap)
 
 -- Comparação menor que
@@ -196,7 +196,7 @@ evaluate heap ambiente (Apl t u) estado =
 
 -- Função independente: registra no ambiente (feito por intPrograma)
 evaluate heap ambiente (Function nome params corpo) estado =
-    (Unit, estado, heap)
+    (Void, estado, heap)
 
 -- Chamada função independente
 evaluate heap ambiente (FunctionCall nomeFuncao args) estado =
@@ -253,7 +253,7 @@ evaluate heap ambiente (While cond body) estado =
         BoolVal True ->
             let (_, estado2, h2) = evaluate h1 ambiente body estado1
             in evaluate h2 ambiente (While cond body) estado2
-        BoolVal False -> (Unit, estado1, h1)
+        BoolVal False -> (Void, estado1, h1)
         _         -> (Erro, estado1, h1)
 
 -- For: loop completo com inicialização, condição, incremento e corpo
@@ -273,7 +273,7 @@ evaluate heap ambiente (Seq t u) estado =
 
 -- Definição de classe: registra no ambiente (feito por intPrograma)
 evaluate heap ambiente (Class nome attrs _) estado =
-    (Unit, estado, heap)  
+    (Void, estado, heap)  
 
 -- Instanciação de Objeto
 evaluate heap ambiente (New nomeClasse) estado =
@@ -313,11 +313,11 @@ evaluate heap ambiente (InstanceOf objExpr className) estado =
 
 -- Interface 
 -- evaluate heap ambiente (Interface nome attrs _) estado =
---     (Unit, estado, heap)  -- Ambiente será atualizado por intPrograma
+--     (Void, estado, heap)  -- Ambiente será atualizado por intPrograma
 
 -- -- Classe Abstrata
 -- evaluate heap ambiente (ClassAbstrata nome attrs _) estado =
---     (Unit, estado, heap)  -- Ambiente será atualizado por intPrograma
+--     (Void, estado, heap)  -- Ambiente será atualizado por intPrograma
 
 -- This: retorna referência ao objeto atual
 evaluate heap ambiente This estado = 
@@ -341,9 +341,9 @@ evaluate heap ambiente (MethodCall objTerm metodoNome args) estado =
                 Nothing -> (Erro, estado1, h1)  -- Objeto não encontrado na heap
         _ -> (Erro, estado1, h1)  -- Não é um objeto
 
--- Definição de método: retorna Unit (métodos são registrados na classe)
+-- Definição de método: retorna Void (métodos são registrados na classe)
 evaluate heap ambiente (Metodo nome params corpo) estado =
-    (Unit, estado, heap)
+    (Void, estado, heap)
 
 -- ============================================================================
 -- FUNÇÕES AUXILIARES
@@ -403,7 +403,7 @@ forLoop heap ambiente cond increment body estado =
             let (_, estado2, h2) = evaluate h1 ambiente body estado1           -- Executa corpo
                 (_, estado3, h3) = evaluate h2 ambiente increment estado2      -- Executa incremento
             in forLoop h3 ambiente cond increment body estado3            -- Recursão
-        BoolVal False -> (Unit, estado1, h1)                         -- Condição falsa, sai
+        BoolVal False -> (Void, estado1, h1)                         -- Condição falsa, sai
         _ -> (Erro, estado1, h1)                                     -- Erro: condição não booleana
 
 -- Buscar método na lista de métodos de uma classe
@@ -449,8 +449,8 @@ instance Show Valor where
     show (Str s) = "\"" ++ s ++ "\""
     show (BoolVal True) = "true"
     show (BoolVal False) = "false"
-    show (FunLamb _) = "Funcao"
-    show Unit = "()"
+    show (FunLamb _) = "Funcao Lambda"
+    show Void = "()"
     show Erro = "Erro"
     show Null = "Null"
     show (ClaDef attrs _) = "<classe com atributos: " ++ show attrs ++ ">"
