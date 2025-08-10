@@ -1,190 +1,195 @@
--- Importa o módulo do interpretador com um alias "JI" para facilitar a utilização.
-import JavaInterpreter as JI
+-- Arquivo de Testes para This, Métodos e Isolamento de Escopo
+-- ============================================================================
+module Main where
+
+import qualified JavaInterpreter as JI
 import Data.List (intercalate)
 
 -- ============================================================================
 -- FUNÇÕES AUXILIARES DE EXIBIÇÃO
 -- ============================================================================
 
--- Função para mostrar o estado (lista de variáveis) de forma mais legível.
--- Ex: [var1 = 10.0, obj = 2.0]
 showEstado :: JI.Estado -> String
 showEstado estado = "[" ++ intercalate ", " (map showTupla estado) ++ "]"
   where showTupla (id, val) = id ++ " = " ++ show val
 
--- Função para mostrar a heap (lista de objetos) de forma mais legível.
--- Exibe cada objeto com seu ID, classe e estado dos atributos.
 showHeap :: JI.Heap -> String
 showHeap heap = "[\n" ++ intercalate ",\n" (map showObj heap) ++ "\n]"
   where showObj (id, (className, attrs)) =
           "  Obj " ++ id ++ " (Classe: " ++ className ++ ") -> {" ++ showEstado attrs ++ "}"
 
--- ============================================================================
--- DEFINIÇÕES DE CLASSES PARA OS TESTES
--- ============================================================================
-
--- Classe simples apenas com um atributo "valor".
-classeSimples :: JI.Termo
-classeSimples = JI.Class "MinhaClasse" ["valor"] []
-
--- Classe com um método "getId" que retorna `This`.
-classeComThis :: JI.Termo
-classeComThis = JI.Class "ClasseThis" ["id"] [
-    JI.Metodo "getId" [] JI.This
-    ]
-
--- Classe com um método que acessa um atributo do próprio objeto via `This`.
-classeComAtributo :: JI.Termo
-classeComAtributo = JI.Class "ClasseAtributo" ["numero"] [
-    JI.Metodo "getNumero" [] (JI.AttrAccess JI.This "numero")
-    ]
-
+showAmbiente :: JI.Ambiente -> String
+showAmbiente amb = "[" ++ intercalate ", " (map showDefClass amb) ++ "]"
+  where 
+    showDefClass (nome, JI.ClaDef attrs _) = nome ++ " (Classe)"
+    showDefClass (nome, JI.IntDef attrs _) = nome ++ " (Interface)"
+    showDefClass (nome, JI.ClaAbstrataDef attrs _) = nome ++ " (Classe Abstrata)"
+    showDefClass (nome, _) = nome ++ " (?)"
 
 -- ============================================================================
--- TESTES INDIVIDUAIS
+-- 8 TESTES ESSENCIAIS
 -- ============================================================================
 
--- Teste 1: Tenta aceder a `This` sem um contexto de objeto (deve dar erro).
-testeThis1 :: IO ()
-testeThis1 = do
-    putStrLn "=== Teste 1: This sem contexto ==="
-    let (resultado, _, _) = JI.at JI.This
+-- TESTE 1: This fora de contexto (deve dar erro)
+teste1_ThisSemContexto :: IO ()
+teste1_ThisSemContexto = do
+    putStrLn "=== TESTE 1: This sem contexto (deve dar ERRO) ==="
+    let (resultado, estado, heap) = JI.at JI.This
     putStrLn $ "Resultado: " ++ show resultado
-    putStrLn ""
+    putStrLn $ "Estado: " ++ showEstado estado
+    putStrLn $ " Esperado: Erro\n"
 
--- Teste 2: Acede a `This` num estado pré-configurado manualmente.
-testeThis2 :: IO ()
-testeThis2 = do
-    putStrLn "=== Teste 2: This com contexto manual ==="
-    let estadoComThis = [("__this__", JI.Num 42)]
-        (resultado, _, _) = JI.evaluate [] [] JI.This estadoComThis
-    putStrLn $ "Resultado: " ++ show resultado
-    putStrLn ""
-
--- Teste 3: Cria uma instância de uma classe simples.
-testeObjeto1 :: IO ()
-testeObjeto1 = do
-    putStrLn "=== Teste 3: Criar objeto simples ==="
+-- TESTE 2: Criação de objeto e acesso básico
+teste2_CriacaoObjeto :: IO ()
+teste2_CriacaoObjeto = do
+    putStrLn "=== TESTE 2: Criação de objeto simples ==="
     let programa = [
-            classeSimples,
-            JI.New "MinhaClasse"
-            ]
-    let (resultado, estado, heap) = JI.intPrograma [] programa [] []
-    putStrLn $ "Resultado (ID do objeto): " ++ show resultado
-    putStrLn $ "Estado Final: " ++ showEstado estado
-    putStrLn $ "Heap Final: \n" ++ showHeap heap
-    putStrLn ""
-
--- Teste 4: Chama um método que retorna a referência do próprio objeto (`This`).
-testeMetodo1 :: IO ()
-testeMetodo1 = do
-    putStrLn "=== Teste 4: Método que retorna This ==="
-    let programa = [
-            classeComThis,
-            -- Atribui uma nova instância de ClasseThis à variável "obj".
-            JI.Atr (JI.Var "obj") (JI.New "ClasseThis"),
-            -- Chama o método "getId" no objeto "obj".
-            JI.MethodCall (JI.Var "obj") "getId" []
-            ]
-    let (resultado, estado, heap) = JI.intPrograma [] programa [] []
-    putStrLn $ "Resultado (deve ser o ID do objeto): " ++ show resultado
-    putStrLn $ "Estado Final: " ++ showEstado estado
-    putStrLn $ "Heap Final: \n" ++ showHeap heap
-    putStrLn ""
-
--- Teste 5: Chama um método que acede a um atributo do objeto.
-testeMetodo2 :: IO ()
-testeMetodo2 = do
-    putStrLn "=== Teste 5: Método que acessa atributo com This ==="
-    let programa = [
-            classeComAtributo,
-            -- 1. Cria o objeto e guarda na variável "obj".
-            JI.Atr (JI.Var "obj") (JI.New "ClasseAtributo"),
-            -- 2. Atribui o valor 100 ao atributo "numero" do objeto "obj".
-            JI.Atr (JI.AttrAccess (JI.Var "obj") "numero") (JI.Lit 100),
-            -- 3. Chama o método que retorna o valor do atributo "numero".
-            JI.MethodCall (JI.Var "obj") "getNumero" []
-            ]
-    let  (resultado, estado, heap) = JI.intPrograma [] programa [] []
-    putStrLn $ "Resultado (deve ser 100.0): " ++ show resultado
-    putStrLn $ "Estado Final: " ++ showEstado estado
-    putStrLn $ "Heap Final: \n" ++ showHeap heap
-    putStrLn ""
-
--- Teste 6: Método altera apenas atributo do objeto, não variável global.
-testeAmbiente1 :: IO ()
-testeAmbiente1 = do
-    putStrLn "=== Teste 6: Ambiente global não é alterado por método ==="
-    let classe = JI.Class "C" ["x"] [
-            JI.Metodo "setX" ["novo"] (JI.Atr (JI.AttrAccess JI.This "x") (JI.Var "novo"))
-            ]
-        programa = [
-            classe,
-            JI.Atr (JI.Var "obj") (JI.New "C"),
-            JI.Atr (JI.Var "global") (JI.Lit 999),
-            JI.MethodCall (JI.Var "obj") "setX" [JI.Lit 123]
-            ]
-    let  (resultado, estado, heap) = JI.intPrograma [] programa [] []
-    putStrLn $ "Estado Final: " ++ showEstado estado
-    putStrLn $ "Heap Final: \n" ++ showHeap heap
-    putStrLn "A variável global deve continuar 999, e o atributo x do objeto deve ser 123."
-    putStrLn ""
-
--- Teste 7: Atribuição direta altera variável global.
-testeAmbiente2 :: IO ()
-testeAmbiente2 = do
-    putStrLn "=== Teste 7: Atribuição direta altera variável global ==="
-    let programa = [
-            JI.Atr (JI.Var "g") (JI.Lit 1),
-            JI.Atr (JI.Var "g") (JI.Lit 2)
+            JI.Class "Pessoa" ["nome", "idade"] [],
+            JI.Atr (JI.Var "p1") (JI.New "Pessoa"),
+            JI.Atr (JI.AttrAccess (JI.Var "p1") "nome") (JI.Lit 100),
+            JI.AttrAccess (JI.Var "p1") "nome"
             ]
         (resultado, estado, heap) = JI.intPrograma [] programa [] []
-    putStrLn $ "Estado Final: " ++ showEstado estado
-    putStrLn "A variável global 'g' deve ser 2."
-    putStrLn ""
-
-
-
--- Teste específico para verificar isolamento de escopo
-testeEscopoCorreto :: IO ()
-testeEscopoCorreto = do
-    putStrLn "=== Teste: Isolamento de Escopo Correto ==="
-    let classe = JI.Class "Test" ["x"] [
-            JI.Metodo "metodo" ["param"] (
-                JI.Seq (JI.Atr (JI.Var "localVar") (JI.Lit 999))  -- Variável local
-                       (JI.Var "param")  -- Retorna parâmetro
-            )
-            ]
-        programa = [
-            classe,
-            JI.Atr (JI.Var "globalVar") (JI.Lit 123),  -- Variável global
-            JI.Atr (JI.Var "obj") (JI.New "Test"),
-            JI.MethodCall (JI.Var "obj") "metodo" [JI.Lit 777]
-            ]
-    let (resultado, estado, heap) = JI.intPrograma [] programa [] []
-    
     putStrLn $ "Resultado: " ++ show resultado
-    putStrLn $ "Estado Final: " ++ showEstado estado
-    putStrLn "Esperado: Apenas [globalVar = 123.0, obj = 1.0]"
-    putStrLn "NÃO deve conter: __this__, param, localVar"
-    putStrLn ""
+    putStrLn $ "Estado: " ++ showEstado estado
+    putStrLn $ "Heap: " ++ showHeap heap
+    putStrLn $ " Esperado: Resultado=100.0, Estado=[p1=1.0], Heap com obj 1\n"
+
+-- TESTE 3: Método que retorna This
+teste3_MetodoRetornaThis :: IO ()
+teste3_MetodoRetornaThis = do
+    putStrLn "=== TESTE 3: Método que retorna This ==="
+    let programa = [
+            JI.Class "Contador" ["valor"] [
+                JI.Metodo "getSelf" [] JI.This
+            ],
+            JI.Atr (JI.Var "c") (JI.New "Contador"),
+            JI.MethodCall (JI.Var "c") "getSelf" []
+            ]
+        (resultado, estado, heap) = JI.intPrograma [] programa [] []
+    putStrLn $ "Resultado: " ++ show resultado
+    putStrLn $ "Estado: " ++ showEstado estado
+    putStrLn $ "Heap: " ++ showHeap heap
+    putStrLn $ " Esperado: Resultado=1.0 (ID do objeto), Estado=[c=1.0]\n"
+
+-- TESTE 4: Método que acessa atributo via This
+teste4_MetodoAcessaAtributo :: IO ()
+teste4_MetodoAcessaAtributo = do
+    putStrLn "=== TESTE 4: Método acessa atributo via This ==="
+    let programa = [
+            JI.Class "Calculadora" ["resultado"] [
+                JI.Metodo "getResultado" [] (JI.AttrAccess JI.This "resultado")
+            ],
+            JI.Atr (JI.Var "calc") (JI.New "Calculadora"),
+            JI.Atr (JI.AttrAccess (JI.Var "calc") "resultado") (JI.Lit 42),
+            JI.MethodCall (JI.Var "calc") "getResultado" []
+            ]
+        (resultado, estado, heap) = JI.intPrograma [] programa [] []
+    putStrLn $ "Resultado: " ++ show resultado
+    putStrLn $ "Estado: " ++ showEstado estado
+    putStrLn $ "Heap: " ++ showHeap heap
+    putStrLn $ " Esperado: Resultado=42.0, Estado=[calc=1.0]\n"
+
+-- TESTE 5: Método que modifica atributo via This
+teste5_MetodoModificaAtributo :: IO ()
+teste5_MetodoModificaAtributo = do
+    putStrLn "=== TESTE 5: Método modifica atributo via This ==="
+    let programa = [
+            JI.Class "Banco" ["saldo"] [
+                JI.Metodo "depositar" ["valor"] (
+                    JI.Atr (JI.AttrAccess JI.This "saldo") 
+                           (JI.Som (JI.AttrAccess JI.This "saldo") (JI.Var "valor"))
+                ),
+                JI.Metodo "getSaldo" [] (JI.AttrAccess JI.This "saldo")
+            ],
+            JI.Atr (JI.Var "conta") (JI.New "Banco"),
+            JI.Atr (JI.AttrAccess (JI.Var "conta") "saldo") (JI.Lit 100),
+            JI.MethodCall (JI.Var "conta") "depositar" [JI.Lit 50],
+            JI.MethodCall (JI.Var "conta") "getSaldo" []
+            ]
+        (resultado, estado, heap) = JI.intPrograma [] programa [] []
+    putStrLn $ "Resultado: " ++ show resultado
+    putStrLn $ "Estado: " ++ showEstado estado
+    putStrLn $ "Heap: " ++ showHeap heap
+    putStrLn $ " Esperado: Resultado=150.0, Estado=[conta=1.0]\n"
+
+-- TESTE 6: Isolamento de escopo (sem vazamento de variáveis locais)
+teste6_IsolamentoEscopo :: IO ()
+teste6_IsolamentoEscopo = do
+    putStrLn "=== TESTE 6: Isolamento de escopo (SEM vazamento) ==="
+    let programa = [
+            JI.Class "Test" ["x"] [
+                JI.Metodo "processar" ["param", "temp"] (
+                    JI.Seq (JI.Atr (JI.Var "localVar") (JI.Lit 999))
+                           (JI.Som (JI.Var "param") (JI.Var "temp"))
+                )
+            ],
+            JI.Atr (JI.Var "globalVar") (JI.Lit 10),
+            JI.Atr (JI.Var "obj") (JI.New "Test"),
+            JI.MethodCall (JI.Var "obj") "processar" [JI.Lit 5, JI.Lit 3]
+            ]
+        (resultado, estado, heap) = JI.intPrograma [] programa [] []
+    putStrLn $ "Resultado: " ++ show resultado
+    putStrLn $ "Estado: " ++ showEstado estado
+    putStrLn $ "Heap: " ++ showHeap heap
+    putStrLn $ " Esperado: Resultado=8.0, Estado=[globalVar=10.0, obj=1.0]"
+    putStrLn $ " NÃO deve conter: __this__, param, temp, localVar\n"
+
+-- TESTE 7: Método chamando outro método via This
+teste7_MetodoChamaMetodo :: IO ()
+teste7_MetodoChamaMetodo = do
+    putStrLn "=== TESTE 7: Método chama outro método via This ==="
+    let programa = [
+            JI.Class "Matematica" ["numero"] [
+                JI.Metodo "dobrar" [] (
+                    JI.Mul (JI.AttrAccess JI.This "numero") (JI.Lit 2)
+                ),
+                JI.Metodo "quadruplicar" [] (
+                    JI.MethodCall JI.This "dobrar" []
+                )
+            ],
+            JI.Atr (JI.Var "math") (JI.New "Matematica"),
+            JI.Atr (JI.AttrAccess (JI.Var "math") "numero") (JI.Lit 5),
+            JI.MethodCall (JI.Var "math") "quadruplicar" []
+            ]
+        (resultado, estado, heap) = JI.intPrograma [] programa [] []
+    putStrLn $ "Resultado: " ++ show resultado
+    putStrLn $ "Estado: " ++ showEstado estado
+    putStrLn $ "Heap: " ++ showHeap heap
+    putStrLn $ " Esperado: Resultado=10.0 (5*2), Estado=[math=1.0]\n"
+
+-- TESTE 8: Ambiente final com múltiplas classes
+teste8_AmbienteCompleto :: IO ()
+teste8_AmbienteCompleto = do
+    putStrLn "=== TESTE 8: Ambiente final com múltiplas classes ==="
+    let programa = [
+            JI.Class "Pessoa" ["nome"] [],
+            JI.Interface "Drawable" ["cor"] [],
+            JI.ClassAbstrata "Animal" ["especie"] [],
+            JI.Atr (JI.Var "p") (JI.New "Pessoa"),
+            JI.Atr (JI.Var "global") (JI.Lit 123)
+            ]
+        ((resultado, estado, heap), ambiente) = JI.testPrograma [] programa [] []
+    putStrLn $ "Resultado: " ++ show resultado
+    putStrLn $ "Estado: " ++ showEstado estado
+    putStrLn $ "Heap: " ++ showHeap heap
+    putStrLn $ "Ambiente: " ++ showAmbiente ambiente
+    putStrLn $ " Esperado: 3 definições no ambiente, Estado=[p=1.0, global=123.0]\n"
 
 -- ============================================================================
--- FUNÇÃO PRINCIPAL PARA EXECUTAR TODOS OS TESTES
+-- FUNÇÃO PRINCIPAL
 -- ============================================================================
-
 main :: IO ()
 main = do
-    putStrLn "####### INICIANDO TESTES DO INTERPRETADOR JAVA #######"
-    putStrLn ""
-
-    testeThis1
-    testeThis2
-    testeObjeto1
-    testeMetodo1
-    testeMetodo2
-    testeAmbiente1
-    testeAmbiente2
-    testeEscopoCorreto
-
-    putStrLn "####### TESTES CONCLUÍDOS COM SUCESSO! #######"
+    putStrLn "###          TESTES DE THIS E ISOLAMENTO DE ESCOPO      ###"
+    
+    teste1_ThisSemContexto
+    teste2_CriacaoObjeto
+    teste3_MetodoRetornaThis
+    teste4_MetodoAcessaAtributo
+    teste5_MetodoModificaAtributo
+    teste6_IsolamentoEscopo
+    teste7_MetodoChamaMetodo
+    teste8_AmbienteCompleto
+    
+    putStrLn "###                TESTES CONCLUÍDOS                    ###"
