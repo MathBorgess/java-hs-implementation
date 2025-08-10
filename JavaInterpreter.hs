@@ -46,8 +46,8 @@ data Valor
     = Num Double
     | Str String                        -- Valor string
     | BoolVal Bool
-    | Fun (Valor -> Estado -> (Valor, Estado))
-    | Unit
+    | FunLamb (Valor -> Estado -> (Valor, Estado))
+    | Unit                              
     | Erro
     | Null
     | ClaDef [Id] [Termo]               -- Definição de classe
@@ -93,7 +93,7 @@ intPrograma a [t] estado heap =
                 -- Interface name attrs mets -> (name, IntDef attrs mets) : a
                 -- ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
                 Function name params corpo -> (name, FunDef params corpo) : a
-                _                  -> a
+                _   -> a
     in (v, estado1, heap1)
 intPrograma a (t : ds) estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
@@ -102,7 +102,7 @@ intPrograma a (t : ds) estado heap =
                 -- Interface name attrs mets -> (name, IntDef attrs mets) : a
                 -- ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
                 Function name params corpo -> (name, FunDef params corpo) : a
-                _                  -> a
+                _   -> a
     in intPrograma a1 ds estado1 heap1
 
 -- Função principal de interpretação
@@ -186,7 +186,7 @@ evaluate heap ambiente (Not t) estado =
 -- ============================================================================
 
 -- Lambda
-evaluate heap ambiente (Lam x t) estado = (Fun (\v st -> let (res, st2, _) = evaluate heap ((x,v):ambiente) t st in (res, st2)), estado, heap)
+evaluate heap ambiente (Lam x t) estado = (FunLamb (\v st -> let (res, st2, _) = evaluate heap ((x,v):ambiente) t st in (res, st2)), estado, heap)
 
 -- Aplicação
 evaluate heap ambiente (Apl t u) estado =
@@ -194,7 +194,7 @@ evaluate heap ambiente (Apl t u) estado =
         (v2, estado2, h2) = evaluate h1 ambiente u estado1
     in app v1 v2 estado2 h2
 
--- Função independente
+-- Função independente: registra no ambiente (feito por intPrograma)
 evaluate heap ambiente (Function nome params corpo) estado =
     (Unit, estado, heap)
 
@@ -366,7 +366,7 @@ multiplica _ _ = Erro
 
 -- Aplicação de função
 app :: Valor -> Valor -> Estado -> Heap -> (Valor, Estado, Heap)
-app (Fun f) v estado h =
+app (FunLamb f) v estado h =
     let (res, estado2) = f v estado
     in (res, estado2, h)
 app _ _ estado h = (Erro, estado, h)
@@ -449,7 +449,7 @@ instance Show Valor where
     show (Str s) = "\"" ++ s ++ "\""
     show (BoolVal True) = "true"
     show (BoolVal False) = "false"
-    show (Fun _) = "Funcao"
+    show (FunLamb _) = "Funcao"
     show Unit = "()"
     show Erro = "Erro"
     show Null = "Null"
