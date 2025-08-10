@@ -51,8 +51,8 @@ data Valor
     | Erro
     | Null
     | ClaDef [Id] [Termo]               -- Definição de classe
-    | IntDef [Id] [Termo]               -- Definição de interface
-    | ClaAbstrataDef [Id] [Termo]       -- Definição de classe abstrata
+    -- | IntDef [Id] [Termo]               -- Definição de interface
+    -- | ClaAbstrataDef [Id] [Termo]       -- Definição de classe abstrata
     | FunDef [Id] Termo                 -- Definição de função independente: parâmetros, corpo
     -- deriving Eq
 
@@ -68,8 +68,8 @@ testPrograma a [t] estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
                 Class name attrs mets -> (name, ClaDef attrs mets) : a
-                Interface name attrs mets -> (name, IntDef attrs mets) : a
-                ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
+                -- Interface name attrs mets -> (name, IntDef attrs mets) : a
+                -- ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
                 Function name params corpo -> (name, FunDef params corpo) : a
                 _                  ->  a
         in ((v, estado1, heap1), a1)
@@ -77,8 +77,8 @@ testPrograma a (t : ds) estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
                 Class name attrs mets -> (name, ClaDef attrs mets) : a
-                Interface name attrs mets -> (name, IntDef attrs mets) : a
-                ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
+                -- Interface name attrs mets -> (name, IntDef attrs mets) : a
+                -- ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
                 Function name params corpo -> (name, FunDef params corpo) : a
                 _                  ->  a
     in testPrograma a1 ds estado1 heap1
@@ -90,8 +90,8 @@ intPrograma a [t] estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
                 Class name attrs mets -> (name, ClaDef attrs mets) : a
-                Interface name attrs mets -> (name, IntDef attrs mets) : a
-                ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
+                -- Interface name attrs mets -> (name, IntDef attrs mets) : a
+                -- ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
                 Function name params corpo -> (name, FunDef params corpo) : a
                 _                  -> a
     in (v, estado1, heap1)
@@ -99,8 +99,8 @@ intPrograma a (t : ds) estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
                 Class name attrs mets -> (name, ClaDef attrs mets) : a
-                Interface name attrs mets -> (name, IntDef attrs mets) : a
-                ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
+                -- Interface name attrs mets -> (name, IntDef attrs mets) : a
+                -- ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
                 Function name params corpo -> (name, FunDef params corpo) : a
                 _                  -> a
     in intPrograma a1 ds estado1 heap1
@@ -228,7 +228,7 @@ evaluate heap ambiente (Atr target t) estado =
             let (objVal, estado2, h2) = evaluate h1 ambiente objTerm estado1
             in case objVal of
                 Num objID -> 
-                    let h3 = setAttr (show (round objID)) attr v1 h2
+                    let h3 = setAttr (show objID) attr v1 h2
                     in (v1, estado2, h3)
                 _ -> (Erro, estado2, h2)
         _ -> (Erro, estado1, h1)
@@ -284,19 +284,19 @@ evaluate heap ambiente (New nomeClasse) estado =
                 novaHeap = (objID, (nomeClasse, instanciaAtr)) : heap
             in (Num (read objID), estado, novaHeap)
         -- Erro de instanciação de classe abstrata
-        IntDef _ _ -> 
-            (Erro, estado, heap)  -- Não é possível instanciar uma interface
-        ClaAbstrataDef _ _ ->
-            (Erro, estado, heap)  -- Não é possível instanciar uma classe abstrata
+        -- IntDef _ _ -> 
+        --     (Erro, estado, heap)  -- Não é possível instanciar uma interface
+        -- ClaAbstrataDef _ _ ->
+        --     (Erro, estado, heap)  -- Não é possível instanciar uma classe abstrata
         -- Outros casos
         _ -> (Erro, estado, heap)
 
--- Acesso a atributo: obj.attr (suporta encadeamento: obj1.obj2.attr)
+-- Acesso a atributo: obj->attr (suporta encadeamento: obj1->...->objN->attr)
 evaluate heap ambiente (AttrAccess objTerm attr) estado =
     let (objVal, estado1, h1) = evaluate heap ambiente objTerm estado
     in case objVal of
         Num objID -> 
-            let val = getAttr (show (round objID)) attr h1
+            let val = getAttr (show objID) attr h1
             in (val, estado1, h1)
         _ -> (Erro, estado1, h1)
 
@@ -305,19 +305,19 @@ evaluate heap ambiente (InstanceOf objExpr className) estado =
     let (vObj, estado1, h1) = evaluate heap ambiente objExpr estado
     in case vObj of
         Num objID ->
-            case lookup (show (round objID)) h1 of
+            case lookup (show objID) h1 of
                 Just (objClass, _) ->
                     (BoolVal (objClass == className), estado1, h1)
                 Nothing -> (Erro, estado1, h1)
         _ -> (Erro, estado1, h1)
 
 -- Interface 
-evaluate heap ambiente (Interface nome attrs _) estado =
-    (Unit, estado, heap)  -- Ambiente será atualizado por intPrograma
+-- evaluate heap ambiente (Interface nome attrs _) estado =
+--     (Unit, estado, heap)  -- Ambiente será atualizado por intPrograma
 
--- Classe Abstrata
-evaluate heap ambiente (ClassAbstrata nome attrs _) estado =
-    (Unit, estado, heap)  -- Ambiente será atualizado por intPrograma
+-- -- Classe Abstrata
+-- evaluate heap ambiente (ClassAbstrata nome attrs _) estado =
+--     (Unit, estado, heap)  -- Ambiente será atualizado por intPrograma
 
 -- This: retorna referência ao objeto atual
 evaluate heap ambiente This estado = 
@@ -330,12 +330,12 @@ evaluate heap ambiente (MethodCall objTerm metodoNome args) estado =
     let (objVal, estado1, h1) = evaluate heap ambiente objTerm estado  -- Avalia objeto
     in case objVal of
         Num objID ->
-            case lookup (show (round objID)) h1 of  -- Busca objeto na heap
+            case lookup (show objID) h1 of  -- Busca objeto na heap
                 Just (nomeClasse, _) ->
                     case search nomeClasse ambiente of  -- Busca definição da classe
                         ClaDef _ metodos ->
                             case buscarMetodo metodoNome metodos of  -- Busca método
-                                Just metodo -> executarMetodo (show (round objID)) metodo args ambiente estado1 h1
+                                Just metodo -> executarMetodo (show objID) metodo args ambiente estado1 h1
                                 Nothing -> (Erro, estado1, h1)  -- Método não encontrado
                         _ -> (Erro, estado1, h1)  -- Classe não encontrada
                 Nothing -> (Erro, estado1, h1)  -- Objeto não encontrado na heap
@@ -354,12 +354,10 @@ search :: Id -> [(Id, Valor)] -> Valor
 search i [] = Erro
 search i ((j, v) : l) = if i == j then v else search i l
 
--- Operações aritméticas
+-- Operações aritméticas (permite )
 somaVal :: Valor -> Valor -> Valor
 somaVal (Num x) (Num y) = Num (x + y)
 somaVal (Str x) (Str y) = Str (x ++ y)
-somaVal (Str x) (Num y) = Str (x ++ show y)
-somaVal (Num x) (Str y) = Str (show x ++ y)
 somaVal _ _ = Erro
 
 multiplica :: Valor -> Valor -> Valor
@@ -381,7 +379,7 @@ wr (i, v) ((j, u) : l) =
         then (j, v) : l
         else (j, u) : wr (i, v) l
 
--- Manipulação de atributos na heap
+-- Manipulação de atributos nos objetos da heap
 setAttr :: Id -> Id -> Valor -> Heap -> Heap
 setAttr objID attrName val [] = []
 setAttr objID attrName val ((id, (className, attrs)) : rest) =
@@ -456,7 +454,7 @@ instance Show Valor where
     show Erro = "Erro"
     show Null = "Null"
     show (ClaDef attrs _) = "<classe com atributos: " ++ show attrs ++ ">"
-    show (IntDef attrs _) = "<interface com atributos: " ++ show attrs ++ ">"           
-    show (ClaAbstrataDef attrs _) = "<classe abstrata com atributos: " ++ show attrs ++ ">"  
+    -- show (IntDef attrs _) = "<interface com atributos: " ++ show attrs ++ ">"           
+    -- show (ClaAbstrataDef attrs _) = "<classe abstrata com atributos: " ++ show attrs ++ ">"  
     show (FunDef params _) = "<funcao com parametros: " ++ show params ++ ">"
 
