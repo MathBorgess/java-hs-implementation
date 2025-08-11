@@ -22,8 +22,7 @@ showAmbiente :: JI.Ambiente -> String
 showAmbiente amb = "[" ++ intercalate ", " (map showDefClass amb) ++ "]"
   where 
     showDefClass (nome, JI.ClaDef attrs _) = nome ++ " (Classe)"
-    showDefClass (nome, JI.IntDef attrs _) = nome ++ " (Interface)"
-    showDefClass (nome, JI.ClaAbstrataDef attrs _) = nome ++ " (Classe Abstrata)"
+    showDefClass (nome, JI.FunDef params _) = nome ++ " (Função)"
     showDefClass (nome, _) = nome ++ " (?)"
 
 -- ============================================================================
@@ -164,8 +163,8 @@ teste8_AmbienteCompleto = do
     putStrLn "=== TESTE 8: Ambiente final com múltiplas classes ==="
     let programa = [
             JI.Class "Pessoa" ["nome"] [],
-            JI.Interface "Drawable" ["cor"] [],
-            JI.ClassAbstrata "Animal" ["especie"] [],
+            JI.Class "Animal" ["especie"] [],
+            JI.Function "calcular" ["x", "y"] (JI.Som (JI.Var "x") (JI.Var "y")),
             JI.Atr (JI.Var "p") (JI.New "Pessoa"),
             JI.Atr (JI.Var "global") (JI.Lit 123)
             ]
