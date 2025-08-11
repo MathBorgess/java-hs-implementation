@@ -398,8 +398,10 @@ forLoop heap ambiente cond increment body estado =
     in case v_cond of
         BoolVal True ->
             let (_, estado2, h2) = evaluate h1 ambiente body estado1           -- Executa corpo
-                (_, estado3, h3) = evaluate h2 ambiente increment estado2      -- Executa incremento
-            in forLoop h3 ambiente cond increment body estado3            -- Recursão
+                (v_incr, estado3, h3) = evaluate h2 ambiente increment estado2 -- Executa incremento
+            in case v_incr of
+                Erro -> (Erro, estado3, h3)                                    -- Para se incremento falhar
+                _    -> forLoop h3 ambiente cond increment body estado3        -- Continua se incremento OK
         BoolVal False -> (Void, estado1, h1)                         -- Condição falsa, sai
         _ -> (Erro, estado1, h1)                                     -- Erro: condição não booleana
 
