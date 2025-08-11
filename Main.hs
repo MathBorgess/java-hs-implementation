@@ -4,34 +4,8 @@ main :: IO ()
 main = do
     putStrLn "=== Testando Interpretador Java-Haskell ==="
     
-    -- Teste 1: Atribuicao simples a variavel
-    putStrLn "\n1. Teste de atribuicao a variavel:"
-    let teste1 = at (Seq (Atr (Var "x") (Lit 42)) (Var "x"))
-    putStrLn $ "   at (Seq (Atr (Var \"x\") (Lit 42)) (Var \"x\"))"
-    putStrLn $ "   Resultado: " ++ show teste1
-    
-    -- Teste 2: Atribuicao basica sem sequencia  
-    putStrLn "\n2. Teste de atribuicao basica:"
-    let teste2 = at (Atr (Var "y") (Lit 10))
-    putStrLn $ "   at (Atr (Var \"y\") (Lit 10))"
-    putStrLn $ "   Resultado: " ++ show teste2
-    
-    -- Teste 3: Programa com classe
-    putStrLn "\n3. Teste de definicao de classe:"
-    let programa1 = [Class "Pessoa" ["nome", "idade"] []]
-    let teste3 = testPrograma [] programa1 [] []
-    putStrLn $ "   testPrograma [] [Class \"Pessoa\" [\"nome\", \"idade\"] []] [] []"
-    putStrLn $ "   Resultado: " ++ show teste3
-    
-    -- Teste 4: Instanciacao de classe
-    putStrLn "\n4. Teste de instanciacao de classe:"
-    let ambiente1 = [("Pessoa", ClaDef ["nome", "idade"] [])]
-    let teste4 = evaluate [] ambiente1 (New "Pessoa") []
-    putStrLn $ "   evaluate [] ambiente (New \"Pessoa\") []"
-    putStrLn $ "   Resultado: " ++ show teste4
-    
-    -- Teste 5: Programa completo - classe + instanciacao + atribuicao a atributo
-    putStrLn "\n5. Teste completo com atributo:"
+    -- Teste 1: classe + instanciacao + atribuicao a atributo
+    putStrLn "\n1. Teste completo com atributo:"
     let programa2 = [
             Class "Pessoa" ["nome"] [],
             Seq (Atr (Var "p") (New "Pessoa"))
@@ -40,3 +14,45 @@ main = do
     let teste5 = testPrograma [] programa2 [] []
     putStrLn $ "   Programa: define classe, instancia, atribui a atributo"
     putStrLn $ "   Resultado: " ++ show teste5
+
+
+    -- Teste 2: Elementos principais da linguagem
+    putStrLn "\n2. Teste de elementos principais da linguagem:"
+    let programa3 = [
+            Function "fibonacci" ["n"] (
+                Iff (Menor (Var "n") (Lit 0))
+                    (Lit 0)
+                (Iff (Menor (Var "n") (Lit 2))
+                    (Var "n")
+                (Som    (FunctionCall "fibonacci" [Som (Var "n") (Lit (-1))])
+                        (FunctionCall "fibonacci" [Som (Var "n") (Lit (-2))])
+                        )
+                    )
+            ),
+            
+            Class "Calculator" [] [
+                Metodo "calcFib" ["n"] (
+                    FunctionCall "fibonacci" [Var "n"]
+                ),
+                Metodo "fatorial" ["n"] (
+                    Iff (Menor (Var "n") (Lit 0))
+                        (Lit 0)
+                    (Iff (Menor (Var "n") (Lit 2))
+                        (Lit 1)
+                    (Mul (Var "n") (MethodCall This "fatorial" [Som (Var "n") (Lit (-1))]) )
+                        )
+                    )
+            ],
+
+            Seq (Atr (Var "calc") (New "Calculator"))
+            (Seq (Atr (Var "resultFib") (MethodCall (Var "calc") "calcFib" [Lit 10]))
+                (Atr (Var "resultFat") (MethodCall (Var "calc") "fatorial" [Lit 6]))
+            )
+            ]
+    let ((resultado6, estado6, heap6), ambiente6) = testPrograma [] programa3 [] []
+    putStrLn $ "Resultado: " ++ show resultado6
+    putStrLn $ "Estado: " ++ show estado6
+    putStrLn $ "Heap: " ++ show heap6
+    putStrLn "Esperado: resultadoFib=55.0, resultadoFat=720.0"
+
+    
