@@ -225,7 +225,7 @@ evaluate heap ambiente (Atr target t) estado =
             let (objVal, estado2, h2) = evaluate h1 ambiente objTerm estado1
             in case objVal of
                 Num objID -> 
-                    let h3 = setAttr (show objID) attr v1 h2
+                    let h3 = setAttr (show (round objID)) attr v1 h2
                     in (v1, estado2, h3)
                 _ -> (Erro, estado2, h2)
         _ -> (Erro, estado1, h1)
@@ -293,7 +293,7 @@ evaluate heap ambiente (AttrAccess objTerm attr) estado =
     let (objVal, estado1, h1) = evaluate heap ambiente objTerm estado
     in case objVal of
         Num objID -> 
-            let val = getAttr (show objID) attr h1
+            let val = getAttr (show (round objID)) attr h1
             in (val, estado1, h1)
         _ -> (Erro, estado1, h1)
 
@@ -302,7 +302,7 @@ evaluate heap ambiente (InstanceOf objExpr className) estado =
     let (vObj, estado1, h1) = evaluate heap ambiente objExpr estado
     in case vObj of
         Num objID ->
-            case lookup (show objID) h1 of
+            case lookup (show (round objID)) h1 of
                 Just (objClass, _) ->
                     (BoolVal (objClass == className), estado1, h1)
                 Nothing -> (Erro, estado1, h1)
@@ -327,12 +327,12 @@ evaluate heap ambiente (MethodCall objTerm metodoNome args) estado =
     let (objVal, estado1, h1) = evaluate heap ambiente objTerm estado  -- Avalia objeto
     in case objVal of
         Num objID ->
-            case lookup (show objID) h1 of  -- Busca objeto na heap
+            case lookup (show (round objID)) h1 of  -- Busca objeto na heap
                 Just (nomeClasse, _) ->
                     case search nomeClasse ambiente of  -- Busca definição da classe
                         ClaDef _ metodos ->
                             case buscarMetodo metodoNome metodos of  -- Busca método
-                                Just metodo -> executarMetodo (show objID) metodo args ambiente estado1 h1
+                                Just metodo -> executarMetodo (show (round objID)) metodo args ambiente estado1 h1
                                 Nothing -> (Erro, estado1, h1)  -- Método não encontrado
                         _ -> (Erro, estado1, h1)  -- Classe não encontrada
                 Nothing -> (Erro, estado1, h1)  -- Objeto não encontrado na heap
