@@ -122,8 +122,8 @@ evaluate heap _ (Bol b) estado = (BoolVal b, estado, heap)
 -- Comando vazio: não faz nada, retorna Void
 evaluate heap _ Skip estado    = (Void, estado, heap)
 
--- Variáveis: busca o valor no  estado (local)  ++  ambiente (global)
-evaluate heap ambiente (Var x) estado = (search x (estado ++ ambiente), estado, heap)
+-- Variáveis: busca o valor no  estado (local); variáveis não podem ser armazenadas no ambiente (sem Var global)
+evaluate heap ambiente (Var x) estado = (search x estado, estado, heap)
 
 
 -- ============================================================================
@@ -207,11 +207,9 @@ evaluate heap ambiente (FunctionCall nomeFuncao args) estado =
                 then
                     -- Cria estado local apenas com parâmetros (sem __this__)
                     let estadoLocal = zip params valsArgs
-                        -- Combina com estado atual para acesso a variáveis globais
-                        estadoCombinado = estadoLocal ++ estadoFinal
-                        (resultado, _, heapResultado) = evaluate heapFinal ambiente corpo estadoCombinado
+                        (resultado, _, heapResultado) = evaluate heapFinal ambiente corpo estadoLocal
                     in (resultado, estadoFinal, heapResultado)
-                else (Erro, estadoFinal, heapFinal)
+                else (Erro, estadoFinal, heapFinal) -- Número de argumentos incorreto
         _ -> (Erro, estado, heap)  -- Função não encontrada
 
 
