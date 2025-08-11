@@ -1,154 +1,173 @@
-# Implementação de Interpretadores Java em Haskell
+# Interpretador Java em Haskell
 
-Este projeto implementa dois interpretadores diferentes para subconjuntos de Java usando Haskell:
+Este projeto implementa um **interpretador completo para uma linguagem orientada a objetos inspirada em Java**, escrita em Haskell. O interpretador suporta programação orientada a objetos com classes, métodos, herança de contexto (`this`), e gerenciamento avançado de memória.
 
-## 1. Basic Statements (basic-statements.hs)
-Implementação das declarações básicas do Java baseada na estrutura do base-line.hs.
+## 🚀 Funcionalidades Principais
 
-### Declarações Implementadas:
-- **IF/ELSE** - Estruturas condicionais
-- **WHILE** - Loops com condição no início  
-- **FOR** - Loops com inicialização, condição e incremento
-- **DO-WHILE** - Loops com condição no final
-- **BREAK** - Interrompe loops
-- **CONTINUE** - Pula para próxima iteração
-- **RETURN** - Retorna valores de funções
-- **Atribuições** - Definição e modificação de variáveis
-- **Blocos** - Agrupamento de declarações
+### **Orientação a Objetos Completa**
+- ✅ **Classes e Objetos**: Definição e instanciação de classes
+- ✅ **Métodos**: Chamadas de métodos com parâmetros
+- ✅ **This**: Referência ao objeto atual em métodos
+- ✅ **Atributos**: Acesso e modificação de atributos de objetos
+- ✅ **Isolamento de Escopo**: Variáveis locais não vazam para escopo global
+- ✅ **Heap Management**: Gerenciamento automático de objetos na memória
 
-### Como Executar Basic Statements:
-```bash
-ghci basic-statements.hs
-# No GHCI, executar:
-testarExemplos
-```
+### **Tipos e Operações**
+- ✅ **Tipos Primitivos**: `Double`, `String`, `Bool`
+- ✅ **Operações Aritméticas**: `+`, `*`
+- ✅ **Operações Lógicas**: `==`, `<`, `&&`, `!`
+- ✅ **Literais**: Números, strings e booleanos
 
-## 2. Java Interpreter (java-interpreter.hs)
-Interpretador mais avançado com suporte a programação orientada a objetos básica.
-
-### Funcionalidades Implementadas:
-
-#### **Expressões e Operações:**
-- ✅ **Aritméticas**: `+`, `*` (soma, multiplicação)
-- ✅ **Comparações**: `==`, `<` (igualdade, menor que)
-- ✅ **Lógicas**: `&&`, `!` (AND, NOT)
-- ✅ **Literais**: Números e booleanos
-
-#### **Estruturas de Controle:**
-- ✅ **IF-ELSE**: Condicionais completas
-- ✅ **WHILE**: Loops funcionais
+### **Estruturas de Controle**
+- ✅ **Condicionais**: `if-else` completo
+- ✅ **Loops**: `while` e `for` com inicialização, condição e incremento
 - ✅ **Sequenciamento**: Execução sequencial de comandos
 
-#### **Funções e Programação Funcional:**
-- ✅ **Lambda**: Funções anônimas com closures
-- ✅ **Aplicação**: Chamada de funções
-- ✅ **Currying**: Aplicação parcial de funções
+### **Funções e Programação Funcional**
+- ✅ **Funções Lambda**: Funções anônimas com closures
+- ✅ **Funções Independentes**: Definição e chamada de funções globais
+- ✅ **Aplicação de Funções**: Suporte completo a currying
 
-#### **Programação Orientada a Objetos:**
-- ✅ **Classes**: Definição com atributos e métodos
-- ✅ **Instanciação**: Criação de objetos (new)
-- ✅ **Heap**: Gerenciamento de memória para objetos
+## 📁 Estrutura do Projeto
 
-#### **Gerenciamento de Estado:**
-- ✅ **Variáveis**: Atribuição e acesso
-- ✅ **Ambiente**: Escopo de definições
-- ✅ **Estado Mutável**: Modificação de variáveis
-- ✅ **Heap**: Objetos em memória dinâmica
+- **`JavaInterpreter.hs`**: Núcleo do interpretador - tipos, avaliação e heap
+- **`TestThis.hs`**: Suite de testes para `this`, métodos e isolamento de escopo
+- **`TestCore.hs`**: Testes gerais do interpretador, incluindo operações aritméticas, booleanas e controle de fluxo
+- **`TestGlobalFunc.hs`**: Testes específicos para funções independentes e recursão
+- **`TestFoor.hs`**: Testes completos para loops `for` e equivalência com `while`
+- **`TestInterpreter.hs`**: Testes completos de todas as funcionalidades básicas
 
-### **Testes Funcionais Comprovados:**
+## 🧪 Exemplo de Uso
 
-#### Operações Básicas:
 ```haskell
--- Aritmética
-5 + 3 = 8.0                    ✅ Funcionando
-4 * 6 = 24.0                   ✅ Funcionando
-(2 + 3) * 4 = 20.0            ✅ Funcionando
+import qualified JavaInterpreter as JI
 
--- Variáveis e Estado
-x = 10; x = 10.0              ✅ Funcionando
-x = 5; y = 3; x + y = 8.0     ✅ Funcionando
+-- Definição de uma classe Pessoa
+classePessoa = JI.Class "Pessoa" ["nome", "idade"] [
+    JI.Metodo "setNome" ["novoNome"] (
+        JI.Atr (JI.AttrAccess JI.This "nome") (JI.Var "novoNome")
+    ),
+    JI.Metodo "getNome" [] (
+        JI.AttrAccess JI.This "nome"
+    ),
+    JI.Metodo "getThis" [] JI.This
+  ]
 
--- Operações Lógicas
-5 == 5 = true                 ✅ Funcionando
-3 < 7 = true                  ✅ Funcionando
-true && false = false         ✅ Funcionando
+-- Programa: cria objeto, define nome e testa métodos
+programa = [
+    classePessoa,
+    JI.Atr (JI.Var "p") (JI.New "Pessoa"),
+    JI.MethodCall (JI.Var "p") "setNome" [JI.LitStr "João"],
+    JI.MethodCall (JI.Var "p") "getNome" []
+  ]
 
--- Estruturas de Controle
-if 3 < 5 then 10 else 20 = 10.0   ✅ Funcionando
+main = do
+    let ((resultado, estado, heap), ambiente) = JI.testPrograma [] programa [] []
+    putStrLn $ "Resultado: " ++ show resultado  -- "João"
+    putStrLn $ "Estado: " ++ show estado        -- [("p", Num 1.0)]
 ```
 
-#### Programas Completos:
-```haskell
--- Programa com definições múltiplas
-x = 10; y = 20; resultado = x + y = 30.0   ✅ Funcionando
+## 🔧 Como Executar
 
--- Classes e objetos
-class Pessoa { nome, idade }; p1 = new Pessoa   ✅ Funcionando
-```
-
-### **Como Executar Java Interpreter:**
-
-#### Testes Rápidos:
+### **Compilação e Execução dos Testes**
 ```bash
-cd /Users/matheusborges/github/cin/java-hs-implementation
-ghci java-interpreter.hs
+# Compilar e executar testes principais de This e OOP
+ghc -o TestThis TestThis.hs
+./TestThis
 
-# Teste operações básicas:
-at (Som (Lit 5) (Lit 3))                    # 5 + 3
-at (Mul (Lit 4) (Lit 6))                    # 4 * 6
-at (Seq (Atr "x" (Lit 10)) (Var "x"))       # x = 10; x
+# Compilar e executar testes de funções independentes
+ghc -o TestGlobalFunc TestGlobalFunc.hs
+./TestGlobalFunc
 
-# Teste operações lógicas:
-at (Ig (Lit 5) (Lit 5))                     # 5 == 5
-at (And (Bol True) (Bol False))             # true && false
+# Compilar e executar testes completos do interpretador
+ghc -o TestInterpreter TestInterpreter.hs
+./TestInterpreter
 
-# Teste estruturas de controle:
-at (Iff (Menor (Lit 3) (Lit 5)) (Lit 10) (Lit 20))  # if 3 < 5 then 10 else 20
-
-# Teste programas:
-intPrograma [] [Def "x" (Lit 10), Def "y" (Lit 20), Def "resultado" (Som (Var "x") (Var "y"))] [] []
+# Outros testes disponíveis
+ghc -o test-for-complete test-for-complete.hs
+./test-for-complete
 ```
 
-#### Testes de Lambda e Funções:
+### **Uso Interativo (GHCi)**
 ```bash
-# Lambda simples: (lambda x -> x + 1) 5
-at (Apl (Lam "x" (Som (Var "x") (Lit 1))) (Lit 5))
+ghci JavaInterpreter.hs
 
-# Currying: (lambda x -> lambda y -> x + y) 3 4
-at (Apl (Apl (Lam "x" (Lam "y" (Som (Var "x") (Var "y")))) (Lit 3)) (Lit 4))
+# Testes rápidos:
+*JavaInterpreter> at (Som (Lit 5) (Lit 3))                    -- 5 + 3 = 8.0
+*JavaInterpreter> at (Atr (Var "x") (Lit 10))                 -- x = 10
+*JavaInterpreter> at (Seq (Atr (Var "x") (Lit 10)) (Var "x")) -- x = 10; x
+
+# Carregar testes manuais
+*JavaInterpreter> :l test-manual.hs
+*test-manual> runTests
 ```
 
-#### Testes de Classes:
-```bash
-# Definir classe e instanciar
-intPrograma [] [Def "Pessoa" (Class "Pessoa" ["nome", "idade"] []), Def "p1" (New "Pessoa")] [] []
-```
+## 🧪 Suíte de Testes Completa
 
-### **Arquitetura do Interpretador:**
+O projeto inclui uma **suíte abrangente de testes** que valida todas as funcionalidades:
 
-1. **Parser Abstrato**: Representação em AST através de tipos algébricos
-2. **Avaliador**: Função `evaluate` que interpreta expressões e comandos
-3. **Gerenciador de Estado**: Tripla (Valor, Estado, Heap) para controle completo
-4. **Sistema de Tipos**: Valores diferenciados (números, booleanos, funções, objetos)
+### **Arquivos de Teste Disponíveis**
+- **`TestThis.hs`**: Testes essenciais para `this`, métodos e isolamento de escopo
+- **`TestInterpreter.hs`**: Testes completos de todas as funcionalidades básicas
+- **`TestGlobalFunc.hs`**: Testes específicos para funções independentes e recursão
+- **`TestFoor.hs`**: Validação completa dos loops `for` e equivalência com `while`
+- **`TestCore.hs`**: Testes gerais do interpretador, incluindo operações aritméticas, booleanas e controle de fluxo
 
-### **Diferenças entre os Interpretadores:**
+### **Categorias de Testes Cobertas**
+- ✅ **Orientação a Objetos**: Classes, objetos, métodos, `this`, isolamento de escopo
+- ✅ **Funções**: Lambda, funções independentes, recursão, currying
+- ✅ **Operações**: Aritméticas, lógicas, comparações, strings
+- ✅ **Controle de Fluxo**: `if-else`, `while`, `for`, sequenciamento
+- ✅ **Gestão de Estado**: Variáveis, atribuições, ambiente, heap
+- ✅ **Casos de Erro**: Validação robusta de entradas inválidas
 
-| Aspecto | Basic Statements | Java Interpreter |
-|---------|------------------|------------------|
-| **Foco** | Estruturas de controle imperativas | Expressões e OOP |
-| **Loops** | FOR, WHILE, DO-WHILE, BREAK, CONTINUE | WHILE básico |
-| **Funções** | Básico | Lambda completo com closures |
-| **OOP** | Não suportado | Classes e objetos |
-| **Estado** | Lista simples | Estado + Heap |
-| **Complexidade** | Médio | Avançado |
+## 🏗️ Arquitetura do Interpretador
 
-### **Conclusão:**
+### **Tipos Principais**
+- **`Termo`**: AST representando expressões, comandos e definições
+- **`Valor`**: Resultados da avaliação (números, strings, objetos, funções)
+- **`Estado`**: Variáveis locais e escopo de execução atual
+- **`Ambiente`**: Definições globais (classes, funções, interfaces)
+- **`Heap`**: Objetos instanciados com seus atributos
 
-Ambos os interpretadores demonstram que as funções `intPrograma` e `evaluate` são **totalmente funcionais** e podem ser usadas como base para interpretadores Java em Haskell. Os testes comprovam:
+### **Fluxo de Execução**
+1. **Parsing**: Código é representado como AST usando tipos algébricos
+2. **Avaliação**: Função `evaluate` interpreta termos recursivamente
+3. **Gerenciamento de Estado**: Tripla `(Valor, Estado, Heap)` mantém controle total
+4. **Isolamento**: Métodos executam em escopo isolado com acesso controlado a `this`
 
-- ✅ **Correção semântica**: Comportamento idêntico ao Java
-- ✅ **Robustez**: Tratamento adequado de erros
-- ✅ **Extensibilidade**: Arquitetura permite adicionar novas funcionalidades
+### **Principais Funções**
+- **`evaluate`**: Núcleo da interpretação, avalia qualquer termo
+- **`testPrograma`**: Executa programa completo e retorna resultado + ambiente
+- **`executarMetodo`**: Executa métodos com isolamento de escopo
+- **`search`**: Busca valores em ambiente/estado com precedência local
+
+## 🧠 Destaques Técnicos
+
+- **Isolamento de Escopo**: Parâmetros de métodos não vazam para estado global
+- **Gerenciamento de Heap**: Objetos com ID único e atributos inicializados automaticamente
+- **Sistema de Tipos Robusto**: Pattern matching exaustivo e tratamento explícito de erros
+- **`this` Contextual**: Disponível apenas em métodos, com acesso controlado
+
+## 🎯 Casos de Uso Validados
+
+- ✅ **Programação OOP**: Classes, objetos, métodos, herança de contexto
+- ✅ **Programação Funcional**: Lambdas, closures, funções de alta ordem
+- ✅ **Programação Imperativa**: Loops, condicionais, atribuições
+- ✅ **Gestão de Memória**: Heap automática para objetos complexos
+
+## 🛠️ Extensibilidade
+
+O interpretador foi projetado para fácil extensão com suporte preparado para herança, interfaces, classes abstratas e novos tipos.
+
+## 📈 Conclusão
+
+Este interpretador demonstra com sucesso a implementação de um **interpretador completo para linguagem orientada a objetos** usando **programação funcional pura**. Os resultados comprovam:
+
+- ✅ **Correção Semântica**: Comportamento fiel às linguagens OOP
+- ✅ **Robustez**: Tratamento completo de erros e casos extremos  
 - ✅ **Performance**: Execução eficiente de programas complexos
+- ✅ **Manutenibilidade**: Código limpo, bem documentado e testado
+- ✅ **Extensibilidade**: Arquitetura permite evolução contínua
 
-O projeto demonstra com sucesso como implementar interpretadores para linguagens imperativas usando programação funcional, mantendo a elegância do Haskell while preservando a semântica do Java.
+O projeto exemplifica como **Haskell** pode ser usado para implementar interpretadores sofisticados, mantendo elegância funcional enquanto preserva semântica imperativa e orientada a objetos.

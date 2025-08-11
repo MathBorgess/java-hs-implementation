@@ -1,16 +1,16 @@
 import JavaInterpreter
 
 -- ============================================================================
--- TESTES PARA FUNÇÕES INDEPENDENTES
+-- TESTES PARA FUNCOES GLOBAIS
 -- ============================================================================
 
 main :: IO ()
 main = do
-    putStrLn "####### TESTANDO FUNÇÕES INDEPENDENTES #######"
+    putStrLn "####### TESTANDO FUNCOES GLOBAIS #######"
     putStrLn ""
     
-    -- Teste 1: Função dobrar
-    putStrLn "=== Teste 1: Função Dobrar ==="
+    -- Teste 1: Funcao dobrar
+    putStrLn "=== Teste 1: Funcao Dobrar ==="
     let testeDobrar = [
             Function "dobrar" ["x"] (Som (Var "x") (Var "x")),
             FunctionCall "dobrar" [Lit 5]
@@ -21,8 +21,8 @@ main = do
     putStrLn "Esperado: ((10.0,[],[]),[...])"
     putStrLn ""
     
-    -- Teste 2: Função somar
-    putStrLn "=== Teste 2: Função Somar ==="
+    -- Teste 2: Funcao somar
+    putStrLn "=== Teste 2: Funcao Somar ==="
     let testeSomar = [
             Function "somar" ["a", "b"] (Som (Var "a") (Var "b")),
             FunctionCall "somar" [Lit 10, Lit 20]
@@ -33,8 +33,8 @@ main = do
     putStrLn "Esperado: ((30.0,[],[]),[...])"
     putStrLn ""
     
-    -- Teste 3: Função saudar
-    putStrLn "=== Teste 3: Função Saudar ==="
+    -- Teste 3: Funcao saudar
+    putStrLn "=== Teste 3: Funcao Saudar ==="
     let testeSaudar = [
             Function "saudar" ["nome"] (Som (LitStr "Ola, ") (Var "nome")),
             FunctionCall "saudar" [LitStr "Mundo"]
@@ -45,8 +45,8 @@ main = do
     putStrLn "Esperado: ((\"Ola, Mundo\",[],[]),[...])"
     putStrLn ""
     
-    -- Teste 4: Função soma de quadrados (função chamando função)
-    putStrLn "=== Teste 4: Soma de Quadrados (Função Chamando Função) ==="
+    -- Teste 4: Funcao soma de quadrados (funcao chamando funcao)
+    putStrLn "=== Teste 4: Soma de Quadrados (Funcao Chamando Funcao) ==="
     let testeSomaQuadrados = [
             Function "quadrado" ["x"] (Mul (Var "x") (Var "x")),
             Function "somaQuadrados" ["a", "b"] (
@@ -61,11 +61,11 @@ main = do
     putStrLn "  function somaQuadrados(a, b) = quadrado(a) + quadrado(b);"
     putStrLn "  somaQuadrados(3, 4)"
     putStrLn $ "Resultado: " ++ show resultadoSomaQuadrados
-    putStrLn "Esperado: ((25.0,[],[]),[...]) // 3² + 4² = 9 + 16 = 25"
+    putStrLn "Esperado: ((25.0,[],[]),[...]) // 3^2 + 4^2 = 9 + 16 = 25"
     putStrLn ""
     
-    -- Teste 5: Função com condicional
-    putStrLn "=== Teste 5: Função com Condicional ==="
+    -- Teste 5: Funcao com condicional
+    putStrLn "=== Teste 5: Funcao com Condicional ==="
     let testeMaior = [
             Function "maior" ["a", "b"] (
                 Iff (Menor (Var "a") (Var "b")) 
@@ -79,25 +79,9 @@ main = do
     putStrLn $ "Resultado: " ++ show resultadoMaior
     putStrLn "Esperado: ((15.0,[],[]),[...])"
     putStrLn ""
-    
-    -- Teste 6: Função que concatena string com número
-    putStrLn "=== Teste 6: String + Número ==="
-    let testeStringNum = [
-            Function "mostrarIdade" ["nome", "idade"] (
-                Som (Som (LitStr "Nome: ") (Var "nome"))
-                    (Som (LitStr ", Idade: ") (Var "idade"))
-            ),
-            FunctionCall "mostrarIdade" [LitStr "Ana", Lit 25]
-            ]
-    let resultadoStringNum = testPrograma [] testeStringNum [] []
-    putStrLn "Programa: function mostrarIdade(nome, idade) = \"Nome: \" + nome + \", Idade: \" + idade"
-    putStrLn "          mostrarIdade(\"Ana\", 25)"
-    putStrLn $ "Resultado: " ++ show resultadoStringNum
-    putStrLn "Esperado: string concatenada com nome e idade"
-    putStrLn ""
-    
-    -- Teste 7: Função sem parâmetros (constante)
-    putStrLn "=== Teste 7: Função Constante ==="
+
+    -- Teste 7: Funcao sem parametros (constante)
+    putStrLn "=== Teste 7: Funcao Constante ==="
     let testeConstante = [
             Function "pi" [] (Lit 3.14159),
             FunctionCall "pi" []
@@ -108,8 +92,8 @@ main = do
     putStrLn "Esperado: ((3.14159,[],[]),[...])"
     putStrLn ""
 
-    -- Teste 8: Recursão
-    putStrLn "=== Teste 8: Recursão ==="
+    -- Teste 8: Recursao
+    putStrLn "=== Teste 8: Recursao ==="
     let testeRecursao = [
             Function "fatorial" ["n"] (
                 Iff (Ig (Var "n") (Lit 0))

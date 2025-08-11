@@ -33,7 +33,7 @@ data Termo
     | This
     | MethodCall Termo Id [Termo]   -- Chamada de método: objeto.metodo(args)
     | Metodo Id [Id] Termo          -- Método: nome, parâmetros, corpo
-    | Function Id [Id] Termo        -- Função independente: nome, parâmetros, corpo
+    | Function Id [Id] Termo        -- Função Global: nome, parâmetros, corpo
     | FunctionCall Id [Termo]       -- Chamada de função: nomeFuncao(args)
     -- deriving Show
 
@@ -53,7 +53,7 @@ data Valor
     | ClaDef [Id] [Termo]               -- Definição de classe
     -- | IntDef [Id] [Termo]               -- Definição de interface
     -- | ClaAbstrataDef [Id] [Termo]       -- Definição de classe abstrata
-    | FunDef [Id] Termo                 -- Definição de função independente: parâmetros, corpo
+    | FunDef [Id] Termo                 -- Definição de função Global: parâmetros, corpo
     -- deriving Eq
 
 type Estado = [(Id, Valor)]          -- Estado mutável
@@ -125,7 +125,6 @@ evaluate heap _ Skip estado    = (Void, estado, heap)
 -- Variáveis: busca o valor no  estado (local)  ++  ambiente (global)
 evaluate heap ambiente (Var x) estado = (search x (estado ++ ambiente), estado, heap)
 
-
 -- ============================================================================
 -- OPERAÇÕES ARITMÉTICAS E LÓGICAS
 -- ============================================================================
@@ -182,7 +181,7 @@ evaluate heap ambiente (Not t) estado =
 
 
 -- ============================================================================
--- FUNÇÕES: LAMBDA, APLICAÇÃO E FUNÇÕES INDEPENDENTES
+-- FUNÇÕES: LAMBDA, APLICAÇÃO E FUNÇÃO GLOBAL
 -- ============================================================================
 
 -- Lambda
@@ -194,11 +193,11 @@ evaluate heap ambiente (Apl t u) estado =
         (v2, estado2, h2) = evaluate h1 ambiente u estado1
     in app v1 v2 estado2 h2
 
--- Função independente: registra no ambiente (feito por intPrograma)
+-- Função Global: registra no ambiente (feito por intPrograma)
 evaluate heap ambiente (Function nome params corpo) estado =
     (Void, estado, heap)
 
--- Chamada função independente
+-- Chamada função Global
 evaluate heap ambiente (FunctionCall nomeFuncao args) estado =
     case search nomeFuncao ambiente of
         FunDef params corpo ->
@@ -207,11 +206,9 @@ evaluate heap ambiente (FunctionCall nomeFuncao args) estado =
                 then
                     -- Cria estado local apenas com parâmetros (sem __this__)
                     let estadoLocal = zip params valsArgs
-                        -- Combina com estado atual para acesso a variáveis globais
-                        estadoCombinado = estadoLocal ++ estadoFinal
-                        (resultado, _, heapResultado) = evaluate heapFinal ambiente corpo estadoCombinado
+                        (resultado, _, heapResultado) = evaluate heapFinal ambiente corpo estadoLocal
                     in (resultado, estadoFinal, heapResultado)
-                else (Erro, estadoFinal, heapFinal)
+                else (Erro, estadoFinal, heapFinal) -- Número de argumentos incorreto
         _ -> (Erro, estado, heap)  -- Função não encontrada
 
 
@@ -228,7 +225,7 @@ evaluate heap ambiente (Atr target t) estado =
             let (objVal, estado2, h2) = evaluate h1 ambiente objTerm estado1
             in case objVal of
                 Num objID -> 
-                    let h3 = setAttr (show objID) attr v1 h2
+                    let h3 = setAttr (show (round objID)) attr v1 h2
                     in (v1, estado2, h3)
                 _ -> (Erro, estado2, h2)
         _ -> (Erro, estado1, h1)
@@ -296,7 +293,7 @@ evaluate heap ambiente (AttrAccess objTerm attr) estado =
     let (objVal, estado1, h1) = evaluate heap ambiente objTerm estado
     in case objVal of
         Num objID -> 
-            let val = getAttr (show objID) attr h1
+            let val = getAttr (show (round objID)) attr h1
             in (val, estado1, h1)
         _ -> (Erro, estado1, h1)
 
@@ -305,7 +302,7 @@ evaluate heap ambiente (InstanceOf objExpr className) estado =
     let (vObj, estado1, h1) = evaluate heap ambiente objExpr estado
     in case vObj of
         Num objID ->
-            case lookup (show objID) h1 of
+            case lookup (show (round objID)) h1 of
                 Just (objClass, _) ->
                     (BoolVal (objClass == className), estado1, h1)
                 Nothing -> (Erro, estado1, h1)
@@ -330,12 +327,12 @@ evaluate heap ambiente (MethodCall objTerm metodoNome args) estado =
     let (objVal, estado1, h1) = evaluate heap ambiente objTerm estado  -- Avalia objeto
     in case objVal of
         Num objID ->
-            case lookup (show objID) h1 of  -- Busca objeto na heap
+            case lookup (show (round objID)) h1 of  -- Busca objeto na heap
                 Just (nomeClasse, _) ->
                     case search nomeClasse ambiente of  -- Busca definição da classe
                         ClaDef _ metodos ->
                             case buscarMetodo metodoNome metodos of  -- Busca método
-                                Just metodo -> executarMetodo (show objID) metodo args ambiente estado1 h1
+                                Just metodo -> executarMetodo (show (round objID)) metodo args ambiente estado1 h1
                                 Nothing -> (Erro, estado1, h1)  -- Método não encontrado
                         _ -> (Erro, estado1, h1)  -- Classe não encontrada
                 Nothing -> (Erro, estado1, h1)  -- Objeto não encontrado na heap
@@ -401,8 +398,10 @@ forLoop heap ambiente cond increment body estado =
     in case v_cond of
         BoolVal True ->
             let (_, estado2, h2) = evaluate h1 ambiente body estado1           -- Executa corpo
-                (_, estado3, h3) = evaluate h2 ambiente increment estado2      -- Executa incremento
-            in forLoop h3 ambiente cond increment body estado3            -- Recursão
+                (v_incr, estado3, h3) = evaluate h2 ambiente increment estado2 -- Executa incremento
+            in case v_incr of
+                Erro -> (Erro, estado3, h3)                                    -- Para se incremento falhar
+                _    -> forLoop h3 ambiente cond increment body estado3        -- Continua se incremento OK
         BoolVal False -> (Void, estado1, h1)                         -- Condição falsa, sai
         _ -> (Erro, estado1, h1)                                     -- Erro: condição não booleana
 
