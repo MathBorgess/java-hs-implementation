@@ -122,9 +122,8 @@ evaluate heap _ (Bol b) estado = (BoolVal b, estado, heap)
 -- Comando vazio: não faz nada, retorna Void
 evaluate heap _ Skip estado    = (Void, estado, heap)
 
--- Variáveis: busca o valor no  estado (local); variáveis não podem ser armazenadas no ambiente (sem Var global)
-evaluate heap ambiente (Var x) estado = (search x estado, estado, heap)
-
+-- Variáveis: busca o valor no  estado (local)  ++  ambiente (global)
+evaluate heap ambiente (Var x) estado = (search x (estado ++ ambiente), estado, heap)
 
 -- ============================================================================
 -- OPERAÇÕES ARITMÉTICAS E LÓGICAS
