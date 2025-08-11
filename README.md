@@ -32,8 +32,10 @@ Este projeto implementa um **interpretador completo para uma linguagem orientada
 
 - **`JavaInterpreter.hs`**: Núcleo do interpretador - tipos, avaliação e heap
 - **`TestThis.hs`**: Suite de testes para `this`, métodos e isolamento de escopo
-- **`Main.hs`**: Exemplo de uso e execução
-- **Outros arquivos**: Testes específicos e exemplos adicionais
+- **`TestCore.hs`**: Testes gerais do interpretador, incluindo operações aritméticas, booleanas e controle de fluxo
+- **`TestGlobalFunc.hs`**: Testes específicos para funções independentes e recursão
+- **`TestFoor.hs`**: Testes completos para loops `for` e equivalência com `while`
+- **`TestInterpreter.hs`**: Testes completos de todas as funcionalidades básicas
 
 ## 🧪 Exemplo de Uso
 
@@ -108,9 +110,8 @@ O projeto inclui uma **suíte abrangente de testes** que valida todas as funcion
 - **`TestThis.hs`**: Testes essenciais para `this`, métodos e isolamento de escopo
 - **`TestInterpreter.hs`**: Testes completos de todas as funcionalidades básicas
 - **`TestGlobalFunc.hs`**: Testes específicos para funções independentes e recursão
-- **`test-for-complete.hs`**: Validação completa dos loops `for` e equivalência com `while`
-- **`test-manual.hs`**: Testes manuais para uso interativo no GHCi
-- **`test-results.hs`**: Documentação dos resultados esperados de todos os testes
+- **`TestFoor.hs`**: Validação completa dos loops `for` e equivalência com `while`
+- **`TestCore.hs`**: Testes gerais do interpretador, incluindo operações aritméticas, booleanas e controle de fluxo
 
 ### **Categorias de Testes Cobertas**
 - ✅ **Orientação a Objetos**: Classes, objetos, métodos, `this`, isolamento de escopo
