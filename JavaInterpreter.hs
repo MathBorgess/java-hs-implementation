@@ -26,8 +26,6 @@ data Termo
     | While Termo Termo               -- While
     | Class Id [Id] [Termo]         -- nome, atributos, métodos
     | New Id                        -- instanciar classe
-    | Interface Id [Id] [Termo]     -- nome, atributos, métodos
-    | ClassAbstrata Id [Id] [Termo] -- nome, atributos, métodos
     | For Termo Termo Termo Termo   -- For loop completo (init, cond, increment, body)
     | InstanceOf Termo Id
     | This
@@ -35,6 +33,8 @@ data Termo
     | Metodo Id [Id] Termo          -- Método: nome, parâmetros, corpo
     | Function Id [Id] Termo        -- Função Global: nome, parâmetros, corpo
     | FunctionCall Id [Termo]       -- Chamada de função: nomeFuncao(args)
+    -- | Interface Id [Id] [Termo]     -- nome, atributos, métodos
+    -- | ClassAbstrata Id [Id] [Termo] -- nome, atributos, métodos
     -- deriving Show
 
 
@@ -51,9 +51,9 @@ data Valor
     | Erro
     | Null
     | ClaDef [Id] [Termo]               -- Definição de classe
+    | FunDef [Id] Termo                 -- Definição de função Global: parâmetros, corpo
     -- | IntDef [Id] [Termo]               -- Definição de interface
     -- | ClaAbstrataDef [Id] [Termo]       -- Definição de classe abstrata
-    | FunDef [Id] Termo                 -- Definição de função Global: parâmetros, corpo
     -- deriving Eq
 
 type Estado = [(Id, Valor)]          -- Estado mutável
@@ -68,18 +68,18 @@ testPrograma a [t] estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
                 Class name attrs mets -> (name, ClaDef attrs mets) : a
+                Function name params corpo -> (name, FunDef params corpo) : a
                 -- Interface name attrs mets -> (name, IntDef attrs mets) : a
                 -- ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
-                Function name params corpo -> (name, FunDef params corpo) : a
                 _                  ->  a
         in ((v, estado1, heap1), a1)
 testPrograma a (t : ds) estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
                 Class name attrs mets -> (name, ClaDef attrs mets) : a
+                Function name params corpo -> (name, FunDef params corpo) : a
                 -- Interface name attrs mets -> (name, IntDef attrs mets) : a
                 -- ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
-                Function name params corpo -> (name, FunDef params corpo) : a
                 _                  ->  a
     in testPrograma a1 ds estado1 heap1
 
@@ -90,18 +90,18 @@ intPrograma a [t] estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
                 Class name attrs mets -> (name, ClaDef attrs mets) : a
+                Function name params corpo -> (name, FunDef params corpo) : a
                 -- Interface name attrs mets -> (name, IntDef attrs mets) : a
                 -- ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
-                Function name params corpo -> (name, FunDef params corpo) : a
                 _   -> a
     in (v, estado1, heap1)
 intPrograma a (t : ds) estado heap =
     let (v, estado1, heap1) = evaluate heap a t estado
         a1 = case t of
                 Class name attrs mets -> (name, ClaDef attrs mets) : a
+                Function name params corpo -> (name, FunDef params corpo) : a
                 -- Interface name attrs mets -> (name, IntDef attrs mets) : a
                 -- ClassAbstrata name attrs mets -> (name, ClaAbstrataDef attrs mets) : a
-                Function name params corpo -> (name, FunDef params corpo) : a
                 _   -> a
     in intPrograma a1 ds estado1 heap1
 
@@ -453,7 +453,7 @@ instance Show Valor where
     show Erro = "Erro"
     show Null = "Null"
     show (ClaDef attrs _) = "<classe com atributos: " ++ show attrs ++ ">"
+    show (FunDef params _) = "<funcao com parametros: " ++ show params ++ ">"
     -- show (IntDef attrs _) = "<interface com atributos: " ++ show attrs ++ ">"           
     -- show (ClaAbstrataDef attrs _) = "<classe abstrata com atributos: " ++ show attrs ++ ">"  
-    show (FunDef params _) = "<funcao com parametros: " ++ show params ++ ">"
 
