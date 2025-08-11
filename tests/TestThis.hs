@@ -6,7 +6,7 @@ import qualified JavaInterpreter as JI
 import Data.List (intercalate)
 
 -- ============================================================================
--- FUNÇÕES AUXILIARES DE EXIBIÇÃO
+-- FUNcÕES AUXILIARES DE EXIBIcÃO
 -- ============================================================================
 
 showEstado :: JI.Estado -> String
@@ -22,7 +22,7 @@ showAmbiente :: JI.Ambiente -> String
 showAmbiente amb = "[" ++ intercalate ", " (map showDefClass amb) ++ "]"
   where 
     showDefClass (nome, JI.ClaDef attrs _) = nome ++ " (Classe)"
-    showDefClass (nome, JI.FunDef params _) = nome ++ " (Função)"
+    showDefClass (nome, JI.FunDef params _) = nome ++ " (Funcão)"
     showDefClass (nome, _) = nome ++ " (?)"
 
 -- ============================================================================
@@ -38,10 +38,10 @@ teste1_ThisSemContexto = do
     putStrLn $ "Estado: " ++ showEstado estado
     putStrLn $ " Esperado: Erro\n"
 
--- TESTE 2: Criação de objeto e acesso básico
+-- TESTE 2: Criacão de objeto e acesso básico
 teste2_CriacaoObjeto :: IO ()
 teste2_CriacaoObjeto = do
-    putStrLn "=== TESTE 2: Criação de objeto simples ==="
+    putStrLn "=== TESTE 2: Criacao de objeto simples ==="
     let programa = [
             JI.Class "Pessoa" ["nome", "idade"] [],
             JI.Atr (JI.Var "p1") (JI.New "Pessoa"),
@@ -132,7 +132,7 @@ teste6_IsolamentoEscopo = do
     putStrLn $ "Estado: " ++ showEstado estado
     putStrLn $ "Heap: " ++ showHeap heap
     putStrLn $ " Esperado: Resultado=8.0, Estado=[globalVar=10.0, obj=1.0]"
-    putStrLn $ " NÃO deve conter: __this__, param, temp, localVar\n"
+    putStrLn $ " NAO deve conter: __this__, param, temp, localVar\n"
 
 -- TESTE 7: Método chamando outro método via This
 teste7_MetodoChamaMetodo :: IO ()
@@ -173,10 +173,10 @@ teste8_AmbienteCompleto = do
     putStrLn $ "Estado: " ++ showEstado estado
     putStrLn $ "Heap: " ++ showHeap heap
     putStrLn $ "Ambiente: " ++ showAmbiente ambiente
-    putStrLn $ " Esperado: 3 definições no ambiente, Estado=[p=1.0, global=123.0]\n"
+    putStrLn $ "Esperado: 3 definicoes no ambiente, Estado=[p=1.0, global=123.0]\n"
 
 -- ============================================================================
--- FUNÇÃO PRINCIPAL
+-- FUNcÃO PRINCIPAL
 -- ============================================================================
 main :: IO ()
 main = do
@@ -191,4 +191,4 @@ main = do
     teste7_MetodoChamaMetodo
     teste8_AmbienteCompleto
     
-    putStrLn "###                TESTES CONCLUÍDOS                    ###"
+    putStrLn "###                TESTES CONCLUIDOS                    ###"
